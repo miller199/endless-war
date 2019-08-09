@@ -43,6 +43,8 @@ CREATE TABLE users (
 	donated_slimes bigint NOT NULL DEFAULT '0',
 	donated_poudrins bigint NOT NULL DEFAULT '0',
 	arrested int NOT NULL DEFAULT '0',
+	fish_space int NOT NULL DEFAULT '0',
+	unclaimed_prizes int NOT NULL DEFAULT '0',
 
 	CONSTRAINT id_user_server PRIMARY KEY (id_user, id_server)
 );
@@ -157,11 +159,6 @@ CREATE TABLE farms (
 	id_user varchar(128) NOT NULL,
 	farm varchar(32) NOT NULL,
 	time_lastsow int NOT NULL DEFAULT '0',
-	phase int NOT NULL DEFAULT '0',
-	time_lastphase int NOT NULL DEFAULT '0',
-	slimes_onreap int NOT NULL DEFAULT '0',
-	action_required int NOT NULL DEFAULT '0',
-	crop varchar(32) NOT NULL DEFAULT '',
 
 	PRIMARY KEY (id_server, id_user, farm)
 );
@@ -268,4 +265,15 @@ CREATE TABLE offers (
 	time_sinceoffer int NOT NULL DEFAULT '0',
 
 	PRIMARY KEY (id_server, id_user, offer_give)
+);
+
+CREATE TABLE tourney_entries (
+    id_server varchar(128) NOT NULL,
+    id_user varchar(128) NOT NULL,
+    id_tourney varchar(128) NOT NULL,
+    id_fish varchar(32) NOT NULL,
+    float_size float NOT NULL,
+    rank_int int NOT NULL DEFAULT '0',
+
+    PRIMARY KEY (id_server, id_user)
 );
