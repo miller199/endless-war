@@ -1,6 +1,7 @@
-import datetime
+import math
 
 import ewcfg
+import ewfish
 import ewutils
 from ewmarket import EwMarket
 
@@ -29,6 +30,53 @@ async def post_leaderboards(client = None, server = None):
 	await ewutils.send_message(client, leaderboard_channel, topdonated)
 	topslimeoids = make_slimeoids_top_board(server = server)
 	await ewutils.send_message(client, leaderboard_channel, topslimeoids)
+	if ewfish.tourney:
+		tourneyresults = make_fishing_top_board(server = server)
+		await ewutils.send_message(client, leaderboard_channel, tourneyresults)
+		tourney_int = market.day % 28
+		if tourney_int == 0:
+			tourney_info = "THE WEEKLY FISHING TOURNEY HAS BEGUN!"
+		elif tourney_int == 27:
+			tourney_info = "THE WEEKLY FISHING TOURNEY BEGINS SOON."
+		elif tourney_int == 7:
+			tourney_info = "THE WEEKLY FISHING TOURNEY HAS CONCLUDED.\nIF YOU WERE IN THE TOP 3 SPOTS, GO TO THE BASSED PRO SHOP TO **!CLAIM** YOUR PRIZE."
+			ewfish.get_tourney_winners(server = server)
+		await ewutils.send_message(client, leaderboard_channel, tourney_info)
+
+def make_fishing_top_board(server = None):
+	board = "🎣 ▓▓▓▓▓ TOP TOURNEY ENTRIES ▓▓▓▓▓ 🎣\n"
+
+	try:
+		conn_info = ewutils.databaseConnect()
+		conn = conn_info.get('conn')
+		cursor = conn.cursor()
+
+		cursor.execute((
+			"SELECT pl.display_name, el.id_fish, el.float_size " +
+			"FROM tourney_entries AS el " +
+			"LEFT JOIN players AS pl ON el.id_user = pl.id_user " +
+			"WHERE el.id_server = %s " +
+			"ORDER BY el.float_size DESC LIMIT 5"
+		), (
+			server.id,
+		))
+
+		data = cursor.fetchall()
+		if data != None:
+			for row in data:
+				board += "{} `{:_>3} | {}'s {}`\n".format(
+					ewcfg.emote_blank,
+					row[2],
+					row[0].replace("`", ""),
+					row[1].replace("`", "")
+				)
+
+	finally:
+		# Clean up the database handles.
+		cursor.close()
+		ewutils.databaseClose(conn_info)
+
+	return board
 
 def make_slimeoids_top_board(server = None):
 	board = "{mega} ▓▓▓▓▓ TOP SLIMEOIDS (CLOUT) ▓▓▓▓▓ {mega}\n".format(
