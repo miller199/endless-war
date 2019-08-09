@@ -11,10 +11,12 @@ from ewmutation import EwMutationFlavor
 from ewslimeoid import EwBody, EwHead, EwMobility, EwOffense, EwDefense, EwSpecial, EwBrain, EwHue
 from ewquadrants import EwQuadrantFlavor
 from ewtransport import EwTransportLine
+from ewfarm import EwFarmAction
 from ewfish import EwFish
+import ewdebug
 
 # Global configuration options.
-version = "3.5d"
+version = "v3.5d"
 dir_msgqueue = 'msgqueue'
 
 discord_message_length_limit = 2000
@@ -462,6 +464,11 @@ cmd_accept = cmd_prefix + 'accept'
 cmd_refuse = cmd_prefix + 'refuse'
 cmd_reap = cmd_prefix + 'reap'
 cmd_sow = cmd_prefix + 'sow'
+cmd_check_farm = cmd_prefix + 'checkfarm'
+cmd_irrigate = cmd_prefix + 'irrigate'
+cmd_weed = cmd_prefix + 'weed'
+cmd_fertilize = cmd_prefix + 'fertilize'
+cmd_pesticide = cmd_prefix + 'pesticide'
 cmd_mill = cmd_prefix + 'mill'
 cmd_cast = cmd_prefix + 'cast'
 cmd_reel = cmd_prefix + 'reel'
@@ -469,6 +476,7 @@ cmd_grill = cmd_prefix + 'grill'
 cmd_appraise = cmd_prefix + 'appraise'
 cmd_appraise_alt1 = cmd_prefix + 'measure'
 cmd_barter = cmd_prefix + 'barter'
+cmd_embiggen = cmd_prefix + 'embiggen'
 cmd_enter = cmd_prefix + 'enter'
 cmd_store = cmd_prefix + 'store'
 cmd_take = cmd_prefix + 'take'
@@ -497,6 +505,8 @@ cmd_quarterlyreport = cmd_prefix + 'quarterlyreport'
 
 cmd_arrest = cmd_prefix + 'arrest'
 cmd_restoreroles = cmd_prefix + 'restoreroles'
+cmd_debug1 = cmd_prefix + ewdebug.cmd_debug1
+cmd_debug2 = cmd_prefix + ewdebug.cmd_debug2
 
 cmd_reroll_mutation = cmd_prefix + 'rerollmutation'
 cmd_clear_mutations = cmd_prefix + 'sterilizemutations'
@@ -572,6 +582,8 @@ slimes_perslot = 100
 slimes_perpachinko = 500
 slimecoin_exchangerate = 100
 slimes_permill = 75000
+slimes_invein = 2000
+slimes_pertile = 25
 
 # hunger
 min_stamina = 100
@@ -579,6 +591,7 @@ hunger_pershot = 10
 hunger_perspar = 30
 hunger_perfarm = 50
 hunger_permine = 1
+hunger_perminereset = 10
 hunger_perfish = 15
 hunger_perscavenge = 2
 hunger_pertick = 3
@@ -687,8 +700,62 @@ invuln_onrevive = 0
 weapon_fee = 100
 
 # farming
-crops_time_to_grow = 180  # in minutes; 180 minutes are 3 hours
-reap_gain = 300000  # this takes about 1 hour to mine, so mining is more efficient
+crops_time_to_grow = 180 # in minutes; 180 minutes are 3 hours
+reap_gain = 100000
+farm_slimes_peraction = 25000
+time_nextphase = 20 * 60 # 20 minutes
+farm_tick_length = 60 # 1 minute
+
+farm_phase_sow = 0
+farm_phase_reap = 9
+
+farm_action_none = 0
+farm_action_water = 1
+farm_action_fertilize = 2
+farm_action_weed = 3
+farm_action_pesticide = 4
+
+farm_actions = [
+	EwFarmAction(
+		id_action = farm_action_water,
+		action = cmd_irrigate,
+		str_check = "Your crop is dry and weak. It needs some water.",
+		str_execute = "You pour water on your parched crop.",
+		str_execute_fail = "You pour gallons of water on the already saturated soil, nearly drowning your crop.",
+	),
+	EwFarmAction(
+		id_action = farm_action_fertilize,
+		action = cmd_fertilize,
+		str_check = "Your crop looks malnourished like an African child in a charity ad.",
+		str_execute = "You fertilize your starving crop.",
+		str_execute_fail = "You give your crop some extra fertilizer for good measure. The ground's salinity shoots up as a result. Maybe look up fertilizer burn, dumbass.",
+	),
+	EwFarmAction(
+		id_action = farm_action_weed,
+		action = cmd_weed,
+		str_check = "Your crop is completely overgrown with weeds.",
+		str_execute = "You make short work of the weeds.",
+		str_execute_fail = "You pull those damn weeds out in a frenzy. Hold on, that wasn't a weed. That was your crop. You put it back in the soil, but it looks much worse for the wear.",
+	),
+	EwFarmAction(
+		id_action = farm_action_pesticide,
+		action = cmd_pesticide,
+		str_check = "Your crop is being ravaged by parasites.",
+		str_execute = "You spray some of the good stuff on your crop and watch the pests drop like flies, in a very literal way.",
+		str_execute_fail = "You spray some of the really nasty stuff on your crop. Surely no pests will be able to eat it away now. Much like any other living creature, probably.",
+	),
+]
+
+id_to_farm_action = {}
+cmd_to_farm_action = {}
+farm_action_ids = []
+
+for farm_action in farm_actions:
+	cmd_to_farm_action[farm_action.action] = farm_action
+	for alias in farm_action.aliases:
+		cmd_to_farm_action[alias] = farm_action
+	id_to_farm_action[farm_action.id_action] = farm_action
+	farm_action_ids.append(farm_action.id_action)
 
 # fishing
 fish_gain = 10000 # multiplied by fish size class
@@ -807,7 +874,10 @@ cell_empty = -1
 cell_empty_marked = -2
 cell_empty_open = -3
 
-symbol_map = {
+cell_slime = 0
+
+
+symbol_map_ms = {
 	-1 : "/",
 	1 : "/",
 	-2 : "+",
@@ -815,16 +885,14 @@ symbol_map = {
 	3 : "X"
 }
 
-number_emote_map = {
-	0 : emote_ms_0,
-	1 : emote_ms_1,
-	2 : emote_ms_2,
-	3 : emote_ms_3,
-	4 : emote_ms_4,
-	5 : emote_ms_5,
-	6 : emote_ms_6,
-	7 : emote_ms_7,
-	8 : emote_ms_8
+symbol_map_pokemine = {
+	-1 : "_",
+	0 : "~",
+	1 : "X",
+	11 : ";",
+	12 : "/",
+	13 : "#"
+	
 }
 
 alphabet = "abcdefghijklmnopqrstuvwxyz"
@@ -1005,6 +1073,15 @@ col_mutation_counter = 'mutation_counter'
 col_transport_type = 'transport_type'
 col_current_line = 'current_line'
 col_current_stop = 'current_stop'
+
+# Database columns for farms
+col_farm = 'farm'
+col_time_lastsow = 'time_lastsow'
+col_phase = 'phase'
+col_time_lastphase = 'time_lastphase'
+col_slimes_onreap = 'slimes_onreap'
+col_action_required = 'action_required'
+col_crop = 'crop'
 
 # Database columns for troll romance
 col_quadrant = 'quadrant'
@@ -1435,7 +1512,7 @@ item_list = [
 	EwGeneralItem(
 		id_item = item_id_forbidden111,
 		str_name = "The Forbidden {}".format(emote_111),
-		#str_desc = ewdebug.theforbiddenoneoneone_desc.format(emote_111 = emote_111),
+		str_desc = ewdebug.theforbiddenoneoneone_desc.format(emote_111 = emote_111),
 		acquisition = acquisition_smelting
 	),
 	EwGeneralItem(
@@ -3898,8 +3975,8 @@ food_list = [
 		],
 		recover_hunger = 340282366920938463463374607431768211455,
 		str_name = "The Forbidden Stuffed Crust Pizza",
-		#str_eat = ewdebug.forbiddenstuffedcrust_eat,
-		#str_desc = ewdebug.forbiddenstuffedcrust_desc,
+		str_eat = ewdebug.forbiddenstuffedcrust_eat,
+		str_desc = ewdebug.forbiddenstuffedcrust_desc,
 		acquisition = acquisition_smelting
 	),
 ]
@@ -9727,8 +9804,7 @@ mutations = [
 		id_mutation = mutation_id_fungalfeaster,
 		str_describe_self = "Tiny mushrooms and other fungi sprout from the top of your head and shoulders due to Fungal Feaster.",
 		str_describe_other = "Tiny mushrooms and other fungi sprout from the top of their head and shoulders due to Fungal Feaster.",
-		str_acquire = "Your saliva thickens, pouring out of your mouth with no regulation. A plethora of funguses begin to grow from your skin, causing you to itch uncontrollably. You feel an intense hunger for the flesh of another juvenile. You have developed the mutation Fungal Feaster. On a fatal blow, restore the hunger expended on your recent shots.",
-		),
+		str_acquire = "Your saliva thickens, pouring out of your mouth with no regulation. A plethora of funguses begin to grow from your skin, causing you to itch uncontrollably. You feel an intense hunger for the flesh of another juvenile. You have developed the mutation Fungal Feaster. On a fatal blow, restore all hunger.",		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_sharptoother,
 		str_describe_self = "Your inhuman hand-eye-teeth coordination is the stuff of legends due to Sharptoother.",
@@ -9757,7 +9833,7 @@ mutations = [
 		id_mutation = mutation_id_organicfursuit,
 		str_describe_self = "Your shedding is a constant source of embarrassment due to Organic Fursuit.",
 		str_describe_other = "Their shedding is a constant source of embarrassment due to Organic Fursuit.",
-		str_acquire = "An acute tingling sensation shoots through your body, causing you to start scratching uncontrollably. You fly past puberty and begin growing frankly alarming amounts of hair all over your body. Your fingernails harden and twist into claws. You gain a distinct appreciation for anthropomorphic characters in media, even going to the trouble of creating an account on an erotic furry roleplay forum. Oh, the horror!! You have developed the mutation Organic Fursuit. Double damage and movement speed every 31st night.",
+		str_acquire = "An acute tingling sensation shoots through your body, causing you to start scratching uncontrollably. You fly past puberty and begin growing frankly alarming amounts of hair all over your body. Your fingernails harden and twist into claws. You gain a distinct appreciation for anthropomorphic characters in media, even going to the trouble of creating an account on an erotic furry roleplay forum. Oh, the horror!! You have developed the mutation Organic Fursuit. Double damage dealt, 1/10th damage taken and movement speed every 31st night.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_lightasafeather,
@@ -9769,7 +9845,7 @@ mutations = [
 		id_mutation = mutation_id_whitenationalist,
 		str_describe_self = "Your bleached white, peeling skin is surely the envy of lesser races due to White Nationalist.",
 		str_describe_other = "Their bleached white, peeling skin is surely the envy of lesser races due to White Nationalist.",
-		str_acquire = "Every pore on your skin suddenly feels like it’s being punctured by a rusty needle. Your skin’s pigment rapidly desaturates to the point of pure #ffffff whiteness. You suddenly love country music, too. Wow, that was a really stupid joke. You have developed the mutation White Nationalist. Cannot be scouted while weather is snowy.",
+		str_acquire = "Every pore on your skin suddenly feels like it’s being punctured by a rusty needle. Your skin’s pigment rapidly desaturates to the point of pure #ffffff whiteness. You suddenly love country music, too. Wow, that was a really stupid joke. You have developed the mutation White Nationalist. Scavenge bonus and cannot be scouted while weather is snowy.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_spoiledappetite,
@@ -9787,7 +9863,7 @@ mutations = [
 		id_mutation = mutation_id_fatchance,
 		str_describe_self = "Your impressive girth provides ample amounts of armor against attacks due to Fat Chance.",
 		str_describe_other = "Their impressive girth provides ample amounts of armor against attacks due to Fat Chance.",
-		str_acquire = "Your body begins to swell, providing you with easily hundreds of extra pounds nigh instantaneously. Walking becomes difficult, breathing even more so. Your fat solidifies into a brick-like consistency, turning you into a living fortress. You only have slightly increased mobility than a regular fortress, however. You have developed the mutation Fat Chance. Take 25% less damage when above 75% hunger.",
+		str_acquire = "Your body begins to swell, providing you with easily hundreds of extra pounds nigh instantaneously. Walking becomes difficult, breathing even more so. Your fat solidifies into a brick-like consistency, turning you into a living fortress. You only have slightly increased mobility than a regular fortress, however. You have developed the mutation Fat Chance. Take 25% less damage when above 50% hunger.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_fastmetabolism,
@@ -9805,7 +9881,7 @@ mutations = [
 		id_mutation = mutation_id_lonewolf,
 		str_describe_self = "You stand out from the crowd, mostly because you stay far away from them due to Lone Wolf.",
 		str_describe_other = "They stand out from the crowd, mostly because they stay far away from them due to Lone Wolf.",
-		str_acquire = "Your eyes squint and a growl escapes your mouth. You begin fostering an unfounded resentment against your fellow juveniles, letting it bubble into a burning hatred in your chest. You snarl and grimace as people pass beside you on the street. All you want to do is be alone, no one understands you anyway. You have developed the mutation Lone Wolf. Double capture rate when in a district alone.",
+		str_acquire = "Your eyes squint and a growl escapes your mouth. You begin fostering an unfounded resentment against your fellow juveniles, letting it bubble into a burning hatred in your chest. You snarl and grimace as people pass beside you on the street. All you want to do is be alone, no one understands you anyway. You have developed the mutation Lone Wolf. Double capture rate and 50% damage buff when in a district alone.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_quantumlegs,
@@ -9823,13 +9899,13 @@ mutations = [
 		id_mutation = mutation_id_patriot,
 		str_describe_self = "You beam with intense pride over your faction’s sophisticated culture and history due to Patriot.",
 		str_describe_other = "They beam with intense pride over their faction’s sophisticated culture and history due to Patriot.",
-		str_acquire = "Your brain’s wrinkles begin to smooth themselves out, and you are suddenly susceptible to being swayed by propaganda. Suddenly, your faction’s achievements flash before your eyes. All of the glorious victories it has won, all of its sophisticated culture and history compels you to action. You have developed the mutation Patriot. Double recapture rate.",
+		str_acquire = "Your brain’s wrinkles begin to smooth themselves out, and you are suddenly susceptible to being swayed by propaganda. Suddenly, your faction’s achievements flash before your eyes. All of the glorious victories it has won, all of its sophisticated culture and history compels you to action. You have developed the mutation Patriot. Double capture rate.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_socialanimal,
 		str_describe_self = "Your charming charisma and dashing good looks make you the life of the party due to Social Animal.",
 		str_describe_other = "Their charming charisma and dashing good looks make them the life of the party due to Social Animal.",
-		str_acquire = "You begin to jitter and shake with unusual vim and vigor. Your heart triples in size and you can’t help but let a toothy grin span from ear to ear as a bizarre energy envelopes you. As long as you’re with your friends, you feel like you can take on the world!! You have developed the mutation Social Animal. Your damage increases by 5% for every ally in your district.",
+		str_acquire = "You begin to jitter and shake with unusual vim and vigor. Your heart triples in size and you can’t help but let a toothy grin span from ear to ear as a bizarre energy envelopes you. As long as you’re with your friends, you feel like you can take on the world!! You have developed the mutation Social Animal. Your damage increases by 10% for every ally in your district.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_threesashroud,
@@ -9865,7 +9941,7 @@ mutations = [
 		id_mutation = mutation_id_dumpsterdiver,
 		str_describe_self = "You are exceptionally good at picking up trash due to Dumpster Diver.",
 		str_describe_other = "They are exceptionally good at picking up trash due to Dumpster Diver.",
-		str_acquire = "A cold rush overtakes you, fogging your mind and causing a temporary lapse in vision. When your mind clears again and you snap back to reality, you notice so many tiny details you hadn’t before. All the loose change scattered on the floor, all the pebbles on the sidewalk, every unimportant object you would have normally glanced over now assaults your senses. You have an uncontrollable desire to pick them all up. You have developed the mutation Dumpster Diver. Double chance to get items while scavenging.",
+		str_acquire = "A cold rush overtakes you, fogging your mind and causing a temporary lapse in vision. When your mind clears again and you snap back to reality, you notice so many tiny details you hadn’t before. All the loose change scattered on the floor, all the pebbles on the sidewalk, every unimportant object you would have normally glanced over now assaults your senses. You have an uncontrollable desire to pick them all up. You have developed the mutation Dumpster Diver. 10 times chance to get items while scavenging.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_trashmouth,
