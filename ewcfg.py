@@ -11,12 +11,10 @@ from ewmutation import EwMutationFlavor
 from ewslimeoid import EwBody, EwHead, EwMobility, EwOffense, EwDefense, EwSpecial, EwBrain, EwHue
 from ewquadrants import EwQuadrantFlavor
 from ewtransport import EwTransportLine
-from ewfarm import EwFarmAction
 from ewfish import EwFish
-import ewdebug
 
 # Global configuration options.
-version = "v3.5d"
+version = "3.5d"
 dir_msgqueue = 'msgqueue'
 
 discord_message_length_limit = 2000
@@ -88,6 +86,7 @@ poi_id_neomilwaukeestate = "neomilwaukeestate"
 poi_id_beachresort = "thebeachresort"
 poi_id_countryclub = "thecountryclub"
 poi_id_slimesea = "slimesea"
+poi_id_bassedproshop = "bassedproshop"
 
 # transports
 poi_id_ferry = "ferry"
@@ -284,6 +283,7 @@ channel_cl_pier = "crookline-pier"
 channel_afb_pier = "assault-flats-beach-pier"
 channel_vc_pier = "vagrants-corner-pier"
 channel_se_pier = "slimes-end-pier"
+channel_bassed_pro_shop = "bassed-pro-shop"
 
 channel_wt_port = "wreckington-port"
 channel_vc_port = "vagrants-corner-port"
@@ -462,17 +462,19 @@ cmd_accept = cmd_prefix + 'accept'
 cmd_refuse = cmd_prefix + 'refuse'
 cmd_reap = cmd_prefix + 'reap'
 cmd_sow = cmd_prefix + 'sow'
-cmd_check_farm = cmd_prefix + 'checkfarm'
-cmd_irrigate = cmd_prefix + 'irrigate'
-cmd_weed = cmd_prefix + 'weed'
-cmd_fertilize = cmd_prefix + 'fertilize'
-cmd_pesticide = cmd_prefix + 'pesticide'
 cmd_mill = cmd_prefix + 'mill'
 cmd_cast = cmd_prefix + 'cast'
 cmd_reel = cmd_prefix + 'reel'
+cmd_grill = cmd_prefix + 'grill'
 cmd_appraise = cmd_prefix + 'appraise'
+cmd_appraise_alt1 = cmd_prefix + 'measure'
 cmd_barter = cmd_prefix + 'barter'
-cmd_embiggen = cmd_prefix + 'embiggen'
+cmd_enter = cmd_prefix + 'enter'
+cmd_store = cmd_prefix + 'store'
+cmd_take = cmd_prefix + 'take'
+cmd_buyspace = cmd_prefix + 'buyspace'
+cmd_tank = cmd_prefix + 'tank'
+cmd_tourney = cmd_prefix + 'tourneyc'
 cmd_adorn = cmd_prefix + 'adorn'
 cmd_dyecosmetic = cmd_prefix + 'dyecosmetic'
 cmd_dyecosmetic_alt1 = cmd_prefix + 'dyehat'
@@ -495,8 +497,6 @@ cmd_quarterlyreport = cmd_prefix + 'quarterlyreport'
 
 cmd_arrest = cmd_prefix + 'arrest'
 cmd_restoreroles = cmd_prefix + 'restoreroles'
-cmd_debug1 = cmd_prefix + ewdebug.cmd_debug1
-cmd_debug2 = cmd_prefix + ewdebug.cmd_debug2
 
 cmd_reroll_mutation = cmd_prefix + 'rerollmutation'
 cmd_clear_mutations = cmd_prefix + 'sterilizemutations'
@@ -572,8 +572,6 @@ slimes_perslot = 100
 slimes_perpachinko = 500
 slimecoin_exchangerate = 100
 slimes_permill = 75000
-slimes_invein = 2000
-slimes_pertile = 25
 
 # hunger
 min_stamina = 100
@@ -581,7 +579,6 @@ hunger_pershot = 10
 hunger_perspar = 30
 hunger_perfarm = 50
 hunger_permine = 1
-hunger_perminereset = 10
 hunger_perfish = 15
 hunger_perscavenge = 2
 hunger_pertick = 3
@@ -602,6 +599,9 @@ acquisition_mining = "mining"
 acquisition_dojo = "dojo"
 acquisition_fishing = "fishing"
 acquisition_bartering = "bartering"
+acquisition_grilling = "grilling"
+acquisition_lilb = "lilb"
+acquisition_prize = "prize"
 
 # standard food expiration in seconds
 std_food_expir = 12 * 3600  # 12 hours
@@ -688,66 +688,19 @@ weapon_fee = 100
 
 # farming
 crops_time_to_grow = 180  # in minutes; 180 minutes are 3 hours
-reap_gain = 100000
-farm_slimes_peraction = 25000
-time_nextphase = 20 * 60 # 20 minutes
-farm_tick_length = 60 # 1 minute
-
-farm_phase_sow = 0
-farm_phase_reap = 9
-
-farm_action_none = 0
-farm_action_water = 1
-farm_action_fertilize = 2
-farm_action_weed = 3
-farm_action_pesticide = 4
-
-farm_actions = [
-	EwFarmAction(
-		id_action = farm_action_water,
-		action = cmd_irrigate,
-		str_check = "Your crop is dry and weak. It needs some water.",
-		str_execute = "You pour water on your parched crop.",
-		str_execute_fail = "You pour gallons of water on the already saturated soil, nearly drowning your crop.",
-	),
-	EwFarmAction(
-		id_action = farm_action_fertilize,
-		action = cmd_fertilize,
-		str_check = "Your crop looks malnourished like an African child in a charity ad.",
-		str_execute = "You fertilize your starving crop.",
-		str_execute_fail = "You give your crop some extra fertilizer for good measure. The ground's salinity shoots up as a result. Maybe look up fertilizer burn, dumbass.",
-	),
-	EwFarmAction(
-		id_action = farm_action_weed,
-		action = cmd_weed,
-		str_check = "Your crop is completely overgrown with weeds.",
-		str_execute = "You make short work of the weeds.",
-		str_execute_fail = "You pull those damn weeds out in a frenzy. Hold on, that wasn't a weed. That was your crop. You put it back in the soil, but it looks much worse for the wear.",
-	),
-	EwFarmAction(
-		id_action = farm_action_pesticide,
-		action = cmd_pesticide,
-		str_check = "Your crop is being ravaged by parasites.",
-		str_execute = "You spray some of the good stuff on your crop and watch the pests drop like flies, in a very literal way.",
-		str_execute_fail = "You spray some of the really nasty stuff on your crop. Surely no pests will be able to eat it away now. Much like any other living creature, probably.",
-	),
-]
-
-id_to_farm_action = {}
-cmd_to_farm_action = {}
-farm_action_ids = []
-
-for farm_action in farm_actions:
-	cmd_to_farm_action[farm_action.action] = farm_action
-	for alias in farm_action.aliases:
-		cmd_to_farm_action[alias] = farm_action
-	id_to_farm_action[farm_action.id_action] = farm_action
-	farm_action_ids.append(farm_action.id_action)
-	
+reap_gain = 300000  # this takes about 1 hour to mine, so mining is more efficient
 
 # fishing
 fish_gain = 10000 # multiplied by fish size class
 fish_offer_timeout = 1440 # in minutes; 24 hours
+
+# Grilling
+base_grill_hunger = 320
+base_grill_cost = 2500
+grill_str_eat = "You eagerly devour the {}-sized grilled {}."
+
+# Fish tanks
+tank_poi = "fishtank"
 
 # Cooldowns
 cd_kill = 5
@@ -854,25 +807,12 @@ cell_empty = -1
 cell_empty_marked = -2
 cell_empty_open = -3
 
-cell_slime = 0
-
-
-symbol_map_ms = {
+symbol_map = {
 	-1 : "/",
 	1 : "/",
 	-2 : "+",
 	2 : "+",
 	3 : "X"
-}
-
-symbol_map_pokemine = {
-	-1 : "_",
-	0 : "~",
-	1 : "X",
-	11 : ";",
-	12 : "/",
-	13 : "#"
-	
 }
 
 number_emote_map = {
@@ -973,6 +913,8 @@ col_poi = 'poi'
 col_life_state = 'life_state'
 col_busted = 'busted'
 col_rrchallenger = 'rr_challenger_id'
+col_time_lastsow = 'time_lastsow'
+col_farm = 'farm'
 col_time_last_action = 'time_last_action'
 col_weaponmarried = 'weaponmarried'
 col_time_lastscavenge = 'time_lastscavenge'
@@ -984,6 +926,8 @@ col_poi_death = 'poi_death'
 col_slime_donations = 'donated_slimes'
 col_poudrin_donations = 'donated_poudrins'
 col_arrested = 'arrested'
+col_fish_space = 'fish_space'
+col_unclaimed_prizes = 'unclaimed_prizes'
 
 #Database columns for bartering
 col_offer_give = 'offer_give'
@@ -1062,19 +1006,16 @@ col_transport_type = 'transport_type'
 col_current_line = 'current_line'
 col_current_stop = 'current_stop'
 
-# Database columns for farms
-col_farm = 'farm'
-col_time_lastsow = 'time_lastsow'
-col_phase = 'phase'
-col_time_lastphase = 'time_lastphase'
-col_slimes_onreap = 'slimes_onreap'
-col_action_required = 'action_required'
-col_crop = 'crop'
-
 # Database columns for troll romance
 col_quadrant = 'quadrant'
 col_quadrants_target = 'id_target'
 col_quadrants_target2 = 'id_target2'
+
+# Database columns for tourneys
+col_id_tourney = 'id_tourney'
+col_id_fish = 'id_fish'
+col_float_size = 'float_size'
+col_rank_int = 'rank_int'
 
 # Item type names
 it_item = "item"
@@ -1494,7 +1435,7 @@ item_list = [
 	EwGeneralItem(
 		id_item = item_id_forbidden111,
 		str_name = "The Forbidden {}".format(emote_111),
-		str_desc = ewdebug.theforbiddenoneoneone_desc.format(emote_111 = emote_111),
+		#str_desc = ewdebug.theforbiddenoneoneone_desc.format(emote_111 = emote_111),
 		acquisition = acquisition_smelting
 	),
 	EwGeneralItem(
@@ -1542,6 +1483,13 @@ item_list = [
 		ingredients = "generic",
 		context = 60,
 	),
+	EwGeneralItem(
+		id_item = "mixtape",
+		str_name = "a CD mixtape",
+		str_desc = "One of Captain Christopher McCartney's many mixtapes burned onto a CD-R in a seemingly handmade jewel case. In terms of the music itself, it IS creatively produced, however Captain Chris could certainly stand to cut out some of the unnecessary fat on here. After all, not every mixtape has to be 80 minutes.",
+		acquisition = acquisition_lilb,
+		ingredients = "generic"
+	)
 ]
 
 # A map of id_item to EwGeneralItem objects.
@@ -2045,7 +1993,193 @@ weapon_list = [
 		fn_effect = wef_tool,
 		str_description = "It's a super fishing rod",
 		acquisition = acquisition_smelting
-	)
+	),
+	EwWeapon(  # 13
+		id_weapon = "fishpick",
+		alias = [
+			"fishpick",
+			"pickpole",
+			"axerod",
+			"fishaxe",
+		],
+		str_crit = "**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss = "**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip = "You equip the fishpick.",
+		str_weapon = "a fishpick",
+		str_weaponmaster_self = "You are a rank {rank} coward of the fishpick.",
+		str_weaponmaster = "They are a rank {rank} coward of the fishpick.",
+		str_trauma_self = "There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma = "There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill = "*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor = "!reeled",
+		str_damage = "{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel = "**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect = wef_tool,
+		str_description = "It's a fishpick. It has both the abilities of a pickaxe and a fishing pole.",
+		acquisition = acquisition_prize
+	),
+	EwWeapon(  # 14
+		id_weapon="portalhook",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Portal-Hook.",
+		str_weapon="a Portal-Hook",
+		str_weaponmaster_self="You are a rank {rank} coward of the Portal-Hook.",
+		str_weaponmaster="They are a rank {rank} coward of the Portal-Hook.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's a Portal-Hook. If you have room in your Bassed Pro Shop fish tank, any fish you catch with it will be transported there instantly.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 15
+		id_weapon="poudrinoff",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Poudrin-Off.",
+		str_weapon="a Poudrin-Off",
+		str_weaponmaster_self="You are a rank {rank} coward of the Poudrin-Off.",
+		str_weaponmaster="They are a rank {rank} coward of the Poudrin-Off.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's a Poudrin-Off. It will never reel in poudrins.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 16
+		id_weapon="gamblersdelight",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Gambler's Delight.",
+		str_weapon="a Gambler's Delight",
+		str_weaponmaster_self="You are a rank {rank} coward of the Gambler's Delight.",
+		str_weaponmaster="They are a rank {rank} coward of the Gambler's Delight.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's a Gambler's Delight. If you miss a fish, you will die instantly, however if you reel one successfully, you will earn triple the slime.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 17
+		id_weapon="thesmoker",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Smoker.",
+		str_weapon="a Smoker",
+		str_weaponmaster_self="You are a rank {rank} coward of the Smoker.",
+		str_weaponmaster="They are a rank {rank} coward of the Smoker.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's the Smoker. Any fish you catch will be grilled instantly.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 18
+		id_weapon="poudrinlover",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Poudrin Lover.",
+		str_weapon="a Poudrin Lover",
+		str_weaponmaster_self="You are a rank {rank} coward of the Poudrin Lover.",
+		str_weaponmaster="They are a rank {rank} coward of the Poudrin Lover.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's a Poudrin Lover. You will only reel in poudrins. Oh god.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 19
+		id_weapon="thejunker",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Junker.",
+		str_weapon="a Poudrin Lover",
+		str_weaponmaster_self="You are a rank {rank} coward of the Junker.",
+		str_weaponmaster="They are a rank {rank} coward of the Junker.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's the Junker. You will only reel in weapons.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 20
+		id_weapon="stickpole",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip a stick pole.",
+		str_weapon="a stick pole",
+		str_weaponmaster_self="You are a rank {rank} coward of a stick pole.",
+		str_weaponmaster="They are a rank {rank} coward of a stick pole.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's a stick pole. Nothing will ever bite this pole.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 21
+		id_weapon="ultrarod",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip an Ultra Rod.",
+		str_weapon="an Ultra Rod",
+		str_weaponmaster_self="You are a rank {rank} coward of the Ultra Rod.",
+		str_weaponmaster="They are a rank {rank} coward of the Ultra Rod.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's an Ultra Rod. Slime gain is based on the fish rarity.",
+		acquisition=acquisition_prize
+	),
+	EwWeapon(  # 22
+		id_weapon="thefreezer",
+		str_crit="**Critical hit!!** By sheer dumb luck, {name_player} manages to get a good hit off on {name_target}’s {hitzone}.",
+		str_miss="**MISS!!** {name_player} is too weak to cast their fishing rod!",
+		str_equip="You equip the Freezer.",
+		str_weapon="the Freezer",
+		str_weaponmaster_self="You are a rank {rank} coward of the Freezer.",
+		str_weaponmaster="They are a rank {rank} coward of the Freezer.",
+		str_trauma_self="There is a piercing on the side of your mouth. How embarrassing!",
+		str_trauma="There is a piercing on the side of their mouth. How embarrassing!",
+		str_kill="*whsssh* {name_player} summons what little courage they possess to reel in {name_target} and wring all the slime out of them. How embarrassing! {emote_skull}",
+		str_killdescriptor="!reeled",
+		str_damage="{name_target} is lightly pierced on the {hitzone}!!",
+		str_duel="**whsssh, whsssh** {name_player} and {name_target} spend some quality time together,discussing fishing strategy and preferred types of bait.",
+		fn_effect=wef_tool,
+		str_description="It's the Freezer. Fish that you catch will not expire for longer.",
+		acquisition=acquisition_prize
+	),
 ]
 
 # A map of id_weapon to EwWeapon objects.
@@ -2062,6 +2196,13 @@ for weapon in weapon_list:
 	for alias in weapon.alias:
 		weapon_map[alias] = weapon
 
+# Bassed Pro Shop prize fishing rods
+pole_prizes = []
+
+# Populate prizes
+for weapon in weapon_list:
+	if weapon.acquisition == acquisition_prize:
+		pole_prizes.append(weapon)
 
 # All weather effects in the game.
 weather_list = [
@@ -3757,8 +3898,8 @@ food_list = [
 		],
 		recover_hunger = 340282366920938463463374607431768211455,
 		str_name = "The Forbidden Stuffed Crust Pizza",
-		str_eat = ewdebug.forbiddenstuffedcrust_eat,
-		str_desc = ewdebug.forbiddenstuffedcrust_desc,
+		#str_eat = ewdebug.forbiddenstuffedcrust_eat,
+		#str_desc = ewdebug.forbiddenstuffedcrust_desc,
 		acquisition = acquisition_smelting
 	),
 ]
@@ -3988,8 +4129,8 @@ fish_list  =  [
 	),
 	EwFish(
 		id_fish = "stunfisk",
-		str_name = fish_rarity_rare,
-		rarity = "Stunfisk",
+		str_name = "Stunfisk",
+		rarity = fish_rarity_rare,
 		catch_time = None,
 		catch_weather = fish_catchtime_rain,
 		str_desc = "Its hide is so tough it can be stepped on by Connor without being injured.",
@@ -6346,6 +6487,29 @@ poi_list = [
 		],
 		is_subzone = True,
 		mother_district = poi_id_dreadford
+	),
+	EwPoi(  # Bassed Pro Shop
+		id_poi=poi_id_bassedproshop,
+		alias=[
+			"bps",
+			"tbps",
+			"bp",
+			"bassedproshop",
+			"thebassedproshop",
+			"bassedpro"
+			"proshop"
+		],
+		str_name="The Bassed Pro Shop",
+		str_desc="On the furthest point of Slime's End lies the Bassed Pro Shop, legally distinct from the Bass Pro Shop chain, yes sir. Truly, an essential destination for the seamen community of NLACakaNM. It is run by Captain Albert Alexander's nephew, Captain Christopher McCartney, a man who supposedly has a strange connection to The Bassed God.\n\nExits into Slime's End.",
+		coord=(94, 42),
+		channel=channel_bassed_pro_shop,
+		role="Bassed Pro Shop",
+		pvp=False,
+		#vendors=[
+		#	vendor_countryclub
+		#],
+		is_subzone=True,
+		mother_district=poi_id_slimesend
 	),
 	EwPoi(  # Toxington Pier
 		id_poi = poi_id_toxington_pier,
@@ -9563,7 +9727,7 @@ mutations = [
 		id_mutation = mutation_id_fungalfeaster,
 		str_describe_self = "Tiny mushrooms and other fungi sprout from the top of your head and shoulders due to Fungal Feaster.",
 		str_describe_other = "Tiny mushrooms and other fungi sprout from the top of their head and shoulders due to Fungal Feaster.",
-		str_acquire = "Your saliva thickens, pouring out of your mouth with no regulation. A plethora of funguses begin to grow from your skin, causing you to itch uncontrollably. You feel an intense hunger for the flesh of another juvenile. You have developed the mutation Fungal Feaster. On a fatal blow, restore all hunger.",
+		str_acquire = "Your saliva thickens, pouring out of your mouth with no regulation. A plethora of funguses begin to grow from your skin, causing you to itch uncontrollably. You feel an intense hunger for the flesh of another juvenile. You have developed the mutation Fungal Feaster. On a fatal blow, restore the hunger expended on your recent shots.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_sharptoother,
@@ -9593,7 +9757,7 @@ mutations = [
 		id_mutation = mutation_id_organicfursuit,
 		str_describe_self = "Your shedding is a constant source of embarrassment due to Organic Fursuit.",
 		str_describe_other = "Their shedding is a constant source of embarrassment due to Organic Fursuit.",
-		str_acquire = "An acute tingling sensation shoots through your body, causing you to start scratching uncontrollably. You fly past puberty and begin growing frankly alarming amounts of hair all over your body. Your fingernails harden and twist into claws. You gain a distinct appreciation for anthropomorphic characters in media, even going to the trouble of creating an account on an erotic furry roleplay forum. Oh, the horror!! You have developed the mutation Organic Fursuit. Double damage dealt, 1/10th damage taken and movement speed every 31st night.",
+		str_acquire = "An acute tingling sensation shoots through your body, causing you to start scratching uncontrollably. You fly past puberty and begin growing frankly alarming amounts of hair all over your body. Your fingernails harden and twist into claws. You gain a distinct appreciation for anthropomorphic characters in media, even going to the trouble of creating an account on an erotic furry roleplay forum. Oh, the horror!! You have developed the mutation Organic Fursuit. Double damage and movement speed every 31st night.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_lightasafeather,
@@ -9605,7 +9769,7 @@ mutations = [
 		id_mutation = mutation_id_whitenationalist,
 		str_describe_self = "Your bleached white, peeling skin is surely the envy of lesser races due to White Nationalist.",
 		str_describe_other = "Their bleached white, peeling skin is surely the envy of lesser races due to White Nationalist.",
-		str_acquire = "Every pore on your skin suddenly feels like it’s being punctured by a rusty needle. Your skin’s pigment rapidly desaturates to the point of pure #ffffff whiteness. You suddenly love country music, too. Wow, that was a really stupid joke. You have developed the mutation White Nationalist. Scavenge bonus and cannot be scouted while weather is snowy.",
+		str_acquire = "Every pore on your skin suddenly feels like it’s being punctured by a rusty needle. Your skin’s pigment rapidly desaturates to the point of pure #ffffff whiteness. You suddenly love country music, too. Wow, that was a really stupid joke. You have developed the mutation White Nationalist. Cannot be scouted while weather is snowy.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_spoiledappetite,
@@ -9623,7 +9787,7 @@ mutations = [
 		id_mutation = mutation_id_fatchance,
 		str_describe_self = "Your impressive girth provides ample amounts of armor against attacks due to Fat Chance.",
 		str_describe_other = "Their impressive girth provides ample amounts of armor against attacks due to Fat Chance.",
-		str_acquire = "Your body begins to swell, providing you with easily hundreds of extra pounds nigh instantaneously. Walking becomes difficult, breathing even more so. Your fat solidifies into a brick-like consistency, turning you into a living fortress. You only have slightly increased mobility than a regular fortress, however. You have developed the mutation Fat Chance. Take 25% less damage when above 50% hunger.",
+		str_acquire = "Your body begins to swell, providing you with easily hundreds of extra pounds nigh instantaneously. Walking becomes difficult, breathing even more so. Your fat solidifies into a brick-like consistency, turning you into a living fortress. You only have slightly increased mobility than a regular fortress, however. You have developed the mutation Fat Chance. Take 25% less damage when above 75% hunger.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_fastmetabolism,
@@ -9641,7 +9805,7 @@ mutations = [
 		id_mutation = mutation_id_lonewolf,
 		str_describe_self = "You stand out from the crowd, mostly because you stay far away from them due to Lone Wolf.",
 		str_describe_other = "They stand out from the crowd, mostly because they stay far away from them due to Lone Wolf.",
-		str_acquire = "Your eyes squint and a growl escapes your mouth. You begin fostering an unfounded resentment against your fellow juveniles, letting it bubble into a burning hatred in your chest. You snarl and grimace as people pass beside you on the street. All you want to do is be alone, no one understands you anyway. You have developed the mutation Lone Wolf. Double capture rate and 50% damage buff when in a district alone.",
+		str_acquire = "Your eyes squint and a growl escapes your mouth. You begin fostering an unfounded resentment against your fellow juveniles, letting it bubble into a burning hatred in your chest. You snarl and grimace as people pass beside you on the street. All you want to do is be alone, no one understands you anyway. You have developed the mutation Lone Wolf. Double capture rate when in a district alone.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_quantumlegs,
@@ -9659,13 +9823,13 @@ mutations = [
 		id_mutation = mutation_id_patriot,
 		str_describe_self = "You beam with intense pride over your faction’s sophisticated culture and history due to Patriot.",
 		str_describe_other = "They beam with intense pride over their faction’s sophisticated culture and history due to Patriot.",
-		str_acquire = "Your brain’s wrinkles begin to smooth themselves out, and you are suddenly susceptible to being swayed by propaganda. Suddenly, your faction’s achievements flash before your eyes. All of the glorious victories it has won, all of its sophisticated culture and history compels you to action. You have developed the mutation Patriot. Double capture rate.",
+		str_acquire = "Your brain’s wrinkles begin to smooth themselves out, and you are suddenly susceptible to being swayed by propaganda. Suddenly, your faction’s achievements flash before your eyes. All of the glorious victories it has won, all of its sophisticated culture and history compels you to action. You have developed the mutation Patriot. Double recapture rate.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_socialanimal,
 		str_describe_self = "Your charming charisma and dashing good looks make you the life of the party due to Social Animal.",
 		str_describe_other = "Their charming charisma and dashing good looks make them the life of the party due to Social Animal.",
-		str_acquire = "You begin to jitter and shake with unusual vim and vigor. Your heart triples in size and you can’t help but let a toothy grin span from ear to ear as a bizarre energy envelopes you. As long as you’re with your friends, you feel like you can take on the world!! You have developed the mutation Social Animal. Your damage increases by 10% for every ally in your district.",
+		str_acquire = "You begin to jitter and shake with unusual vim and vigor. Your heart triples in size and you can’t help but let a toothy grin span from ear to ear as a bizarre energy envelopes you. As long as you’re with your friends, you feel like you can take on the world!! You have developed the mutation Social Animal. Your damage increases by 5% for every ally in your district.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_threesashroud,
@@ -9701,7 +9865,7 @@ mutations = [
 		id_mutation = mutation_id_dumpsterdiver,
 		str_describe_self = "You are exceptionally good at picking up trash due to Dumpster Diver.",
 		str_describe_other = "They are exceptionally good at picking up trash due to Dumpster Diver.",
-		str_acquire = "A cold rush overtakes you, fogging your mind and causing a temporary lapse in vision. When your mind clears again and you snap back to reality, you notice so many tiny details you hadn’t before. All the loose change scattered on the floor, all the pebbles on the sidewalk, every unimportant object you would have normally glanced over now assaults your senses. You have an uncontrollable desire to pick them all up. You have developed the mutation Dumpster Diver. 10 times chance to get items while scavenging.",
+		str_acquire = "A cold rush overtakes you, fogging your mind and causing a temporary lapse in vision. When your mind clears again and you snap back to reality, you notice so many tiny details you hadn’t before. All the loose change scattered on the floor, all the pebbles on the sidewalk, every unimportant object you would have normally glanced over now assaults your senses. You have an uncontrollable desire to pick them all up. You have developed the mutation Dumpster Diver. Double chance to get items while scavenging.",
 		),
 	EwMutationFlavor(
 		id_mutation = mutation_id_trashmouth,
@@ -10054,6 +10218,38 @@ for bait in food_list:
 	else:
 		pass
 
+# If a fish doesn't bite, send one of these.
+nobite_text = [
+	"You patiently wait...",
+	"This is so fucking boring...",
+	"You watch your hook bob...",
+	"You grow impatient and kick the rotted wooden guard rails...",
+	"AUUUUUGH JUST BITE THE FUCKING HOOK ALREADY...",
+	"You begin to zone-out a bit...",
+	"Shouldn't you be doing something productive?",
+	"You sit patiently, eagerly awaiting a fish to bit...",
+	"You begin to daydream about fish sex... Gross...",
+	"You see a fish about to bite your hook, but you shout in elation, scaring it away...",
+	"You make direct eye contact with a fish, only to quickly look away...",
+	"♪ Fishing for Fishies! ♪",
+	"♪ That Captain Albert Alexander! ♪",
+	"You get the urge to jump in and try to grab a fish, but then you remember that you can't swim...",
+	"You hum some sea shanties...",
+	"You start to develop an existential crisis...",
+	"You jitter as other seamen catch fish before you. Fuck fishing...",
+	"You shake your head as a young seaman hooks a perfectly good slice of pizza on his hook... What a cretan...",
+	"You wonder if the Space Navy has been formed yet...",
+	"Man... Why were you excited for this shit?",
+	"Still better than Minesweeper...",
+	"Maybe one day your wife will pardon you...",
+	"Fuck fish...",
+	"You let out a deep sigh, in doing so, you scare away a fish...",
+	"Wouldn't it be funny if you just reached into the sea and grabbed one? Haha, yeah, that'd be funny...",
+	"You see a bird carry off a Plebefish in the distance... Good riddance...",
+	"You spot a stray bullet in the distance...",
+	"You see a dead body float up to the surface of the Slime..."
+	"Fish..."
+]
 
 # Dict of all help responses linked to their associated topics
 help_responses = {
