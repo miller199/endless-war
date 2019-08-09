@@ -16,6 +16,7 @@ import traceback
 import re
 import os
 import shlex
+import math
 
 import ewutils
 import ewcfg
@@ -43,7 +44,6 @@ import ewquadrants
 import ewtransport
 import ewsmelting
 import ewfish
-import ewdebug
 
 from ewitem import EwItem
 from ew import EwUser
@@ -103,7 +103,7 @@ cmd_map = {
 	ewcfg.cmd_mine: ewjuviecmd.mine,
 
 	# flags a vein as dangerous
-	#ewcfg.cmd_flag: ewjuviecmd.flag,
+	ewcfg.cmd_flag: ewjuviecmd.flag,
 
 	# Show the current slime score of a player.
 	ewcfg.cmd_score: ewcmd.score,
@@ -239,7 +239,6 @@ cmd_map = {
 	ewcfg.cmd_pardon: ewkingpin.pardon,
 	ewcfg.cmd_banish: ewkingpin.banish,
 
-
 	# Navigate the world map.
 	ewcfg.cmd_move: ewmap.move,
 	ewcfg.cmd_move_alt1: ewmap.move,
@@ -273,19 +272,23 @@ cmd_map = {
 	#farming
 	ewcfg.cmd_sow: ewfarm.sow,
 	ewcfg.cmd_reap: ewfarm.reap,
-	ewcfg.cmd_check_farm: ewfarm.check_farm,
-	ewcfg.cmd_irrigate: ewfarm.cultivate,
-	ewcfg.cmd_weed: ewfarm.cultivate,
-	ewcfg.cmd_fertilize: ewfarm.cultivate,
-	ewcfg.cmd_pesticide: ewfarm.cultivate,
 	ewcfg.cmd_mill: ewfarm.mill,
 
 	# Fishing
 	ewcfg.cmd_cast: ewfish.cast,
 	ewcfg.cmd_reel: ewfish.reel,
 	ewcfg.cmd_appraise: ewfish.appraise,
+	ewcfg.cmd_appraise_alt1: ewfish.appraise,
 	ewcfg.cmd_barter: ewfish.barter,
-	ewcfg.cmd_embiggen: ewfish.embiggen,
+
+	# Bassed Pro Shop
+	ewcfg.cmd_grill: ewfish.grill,
+	ewcfg.cmd_enter: ewfish.enter_tourney,
+	ewcfg.cmd_store: ewfish.store_fish,
+	ewcfg.cmd_take: ewfish.take_fish,
+	ewcfg.cmd_buyspace: ewfish.buy_tank_space,
+	ewcfg.cmd_tourney: ewfish.tourney,
+	ewcfg.cmd_tank: ewfish.tank,
 
 	 #scavenging
 	ewcfg.cmd_scavenge: ewjuviecmd.scavenge,
@@ -392,15 +395,11 @@ cmd_map = {
 	# restores poi roles to their proper names, only usable by admins
 	ewcfg.cmd_restoreroles: ewrolemgr.restoreRoleNames,
 
-	# debug commands
-	ewcfg.cmd_debug1: ewdebug.debug1,
-	ewcfg.cmd_debug2: ewdebug.debug2,
-
 	# ban a player from using commands
 	ewcfg.cmd_arrest: ewcmd.arrest,
 }
 
-debug = False
+debug = True
 while sys.argv:
 	if sys.argv[0].lower() == '--debug':
 		debug = True
@@ -505,6 +504,9 @@ async def on_ready():
 		# Update server data in the database
 		ewserver.server_update(server = server)
 
+		# Determine if a Fishing Tourney is active
+		ewfish.tourney = ewfish.get_tourney(server = server)
+
 		# store the list of channels in an ewutils field
 		ewcfg.update_server_list(server = server)
 
@@ -551,7 +553,6 @@ async def on_ready():
 		if not debug:
 			await ewtransport.init_transports(id_server = server.id)
 		asyncio.ensure_future(ewslimeoid.slimeoid_tick_loop(id_server = server.id))
-		asyncio.ensure_future(ewfarm.farm_tick_loop(id_server = server.id))
 
 	try:
 		ewutils.logMsg('Creating message queue directory.')
@@ -653,6 +654,9 @@ async def on_ready():
 
 					# Advance the time and potentially change weather.
 					market_data.clock += 1
+
+					# Determine if a Fishing Tourney is active
+					ewfish.tourney = ewfish.get_tourney(server=server)
 
 					if market_data.clock >= 24 or market_data.clock < 0:
 						market_data.clock = 0
@@ -911,7 +915,7 @@ async def on_message(message):
 			if ewcfg.mutation_id_chameleonskin not in mutations or cmd not in ewcfg.offline_cmds:
 
 				response = "You cannot participate in the ENDLESS WAR while offline."
-    
+
 				return await ewutils.send_message(client, message.channel, ewutils.formatMessage(message.author, response))
 
 
@@ -1107,4 +1111,3 @@ try:
 finally:
 	ewutils.TERMINATE = True
 	ewutils.logMsg("main thread terminated.")
-
