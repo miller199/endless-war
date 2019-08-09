@@ -193,6 +193,7 @@ class EwItem:
 	These are unassuming, tangible, multi-faceted, customizable items that you can actually interact with in-game.
 """
 class EwGeneralItem:
+	item_type = "item"
 	id_item = " "
 	alias = []
 	context = ""
@@ -215,6 +216,7 @@ class EwGeneralItem:
 		price = 0,
 		vendors = [],
 	):
+		self.item_type = ewcfg.it_item
 		self.id_item = id_item
 		self.alias = alias
 		self.context = context
@@ -1107,3 +1109,48 @@ async def discard(cmd):
 			response = "Discard which item? (check **!inventory**)"
 
 	await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
+
+def gen_item_props(item):
+	item_props = {}
+	if not hasattr(item, "item_type"):
+		return item_props
+	if item.item_type == ewcfg.it_food:
+		
+		item_props = {
+			'id_food': item.id_food,
+			'food_name': item.str_name,
+			'food_desc': item.str_desc,
+			'recover_hunger': item.recover_hunger,
+			'inebriation': item.inebriation,
+			'str_eat': item.str_eat,
+			'time_expir': int(time.time()) + item.time_expir,
+		}
+	elif item.item_type == ewcfg.it_item:
+		item_props = {
+			'id_item': item.id_item,
+			'context': item.context,
+			'item_name': item.str_name,
+			'item_desc': item.str_desc,
+			'ingredients': item.ingredients,
+			'acquisition': item.acquisition,
+		}
+	elif item.item_type == ewcfg.it_weapon:
+		item_props = {
+			"weapon_type": item.id_weapon,
+			"weapon_name": "",
+			"weapon_desc": item.str_description,
+			"married": ""
+		}
+
+	elif item.item_type == ewcfg.it_cosmetic:
+		item_props = {
+			'id_cosmetic': item.id_cosmetic,
+			'cosmetic_name': item.str_name,
+			'cosmetic_desc': item.str_desc,
+			'rarity': item.rarity,
+			'adorned': 'false'
+		}
+
+	return item_props
+		
+		

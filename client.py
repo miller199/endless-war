@@ -103,7 +103,7 @@ cmd_map = {
 	ewcfg.cmd_mine: ewjuviecmd.mine,
 
 	# flags a vein as dangerous
-	ewcfg.cmd_flag: ewjuviecmd.flag,
+	#ewcfg.cmd_flag: ewjuviecmd.flag,
 
 	# Show the current slime score of a player.
 	ewcfg.cmd_score: ewcmd.score,
@@ -273,6 +273,11 @@ cmd_map = {
 	#farming
 	ewcfg.cmd_sow: ewfarm.sow,
 	ewcfg.cmd_reap: ewfarm.reap,
+	ewcfg.cmd_check_farm: ewfarm.check_farm,
+	ewcfg.cmd_irrigate: ewfarm.cultivate,
+	ewcfg.cmd_weed: ewfarm.cultivate,
+	ewcfg.cmd_fertilize: ewfarm.cultivate,
+	ewcfg.cmd_pesticide: ewfarm.cultivate,
 	ewcfg.cmd_mill: ewfarm.mill,
 
 	# Fishing
@@ -280,6 +285,7 @@ cmd_map = {
 	ewcfg.cmd_reel: ewfish.reel,
 	ewcfg.cmd_appraise: ewfish.appraise,
 	ewcfg.cmd_barter: ewfish.barter,
+	ewcfg.cmd_embiggen: ewfish.embiggen,
 
 	 #scavenging
 	ewcfg.cmd_scavenge: ewjuviecmd.scavenge,
@@ -545,6 +551,7 @@ async def on_ready():
 		if not debug:
 			await ewtransport.init_transports(id_server = server.id)
 		asyncio.ensure_future(ewslimeoid.slimeoid_tick_loop(id_server = server.id))
+		asyncio.ensure_future(ewfarm.farm_tick_loop(id_server = server.id))
 
 	try:
 		ewutils.logMsg('Creating message queue directory.')

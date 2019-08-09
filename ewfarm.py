@@ -1,5 +1,6 @@
 import time
 import random
+import asyncio
 
 import ewcfg
 import ewitem
@@ -9,12 +10,18 @@ from ew import EwUser
 from ewmarket import EwMarket
 from ewfood import EwFood
 from ewitem import EwItem
+from ewslimeoid import EwSlimeoid
 
 class EwFarm:
 	id_server = ""
 	id_user = ""
 	name = ""
 	time_lastsow = 0
+	phase = 0
+	time_lastphase = 0
+	slimes_onreap = 0
+	action_required = 0
+	crop = ""
 
 	def __init__(
 		self,
@@ -28,9 +35,14 @@ class EwFarm:
 			self.name = farm
 
 			data = ewutils.execute_sql_query(
-				"SELECT {time_lastsow} FROM farms WHERE id_server = %s AND id_user = %s AND {col_farm} = %s".format(
+				"SELECT {time_lastsow}, {phase}, {time_lastphase}, {slimes_onreap}, {action_required}, {crop} FROM farms WHERE id_server = %s AND id_user = %s AND {col_farm} = %s".format(
 					time_lastsow = ewcfg.col_time_lastsow,
-					col_farm = ewcfg.col_farm
+					col_farm = ewcfg.col_farm,
+					phase = ewcfg.col_phase,
+					time_lastphase = ewcfg.col_time_lastphase,
+					slimes_onreap = ewcfg.col_slimes_onreap,
+					action_required = ewcfg.col_action_required,
+					crop = ewcfg.col_crop,
 				), (
 					id_server,
 					id_user,
@@ -41,6 +53,11 @@ class EwFarm:
 			if len(data) > 0:  # if data is not empty, i.e. it found an entry
 				# data is always a two-dimensional array and if we only fetch one row, we have to type data[0][x]
 				self.time_lastsow = data[0][0]
+				self.phase = data[0][1]
+				self.time_lastphase = data[0][2]
+				self.slimes_onreap = data[0][3]
+				self.action_required = data[0][4]
+				self.crop = data[0][5]
 			else:  # create new entry
 				ewutils.execute_sql_query(
 					"REPLACE INTO farms (id_server, id_user, {col_farm}) VALUES (%s, %s, %s)".format(
@@ -54,16 +71,55 @@ class EwFarm:
 
 	def persist(self):
 		ewutils.execute_sql_query(
-			"REPLACE INTO farms(id_server, id_user, {col_farm}, {col_time_lastsow}) VALUES(%s, %s, %s, %s)".format(
-				col_farm = ewcfg.col_farm,
-				col_time_lastsow = ewcfg.col_time_lastsow
+			"REPLACE INTO farms(id_server, id_user, {farm}, {time_lastsow}, {phase}, {time_lastphase}, {slimes_onreap}, {action_required}, {crop}) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s)".format(
+				farm = ewcfg.col_farm,
+				time_lastsow = ewcfg.col_time_lastsow,
+				phase = ewcfg.col_phase,
+				time_lastphase = ewcfg.col_time_lastphase,
+				slimes_onreap = ewcfg.col_slimes_onreap,
+				action_required = ewcfg.col_action_required,
+				crop = ewcfg.col_crop,
 			), (
 				self.id_server,
 				self.id_user,
 				self.name,
-				self.time_lastsow
+				self.time_lastsow,
+				self.phase,
+				self.time_lastphase,
+				self.slimes_onreap,
+				self.action_required,
+				self.crop,
 			)
 		)
+
+class EwFarmAction:
+	id_action = 0
+
+	action = ""
+	
+	str_check = ""
+
+	str_execute = ""
+
+	str_execute_fail = ""
+
+	aliases = []
+
+	def __init__(self,
+		id_action = 0,
+		action = "",
+		str_check = "",
+		str_execute = "",
+		str_execute_fail = "",
+		aliases = []
+	):
+		self.id_action = id_action
+		self.action = action
+		self.str_check = str_check
+		self.str_execute = str_execute
+		self.str_execute_fail = str_execute_fail
+		self.aliases = aliases
+
 
 """
 	Reap planted crops.
@@ -99,7 +155,7 @@ async def reap(cmd):
 			cur_time_min = time.time() / 60
 			time_grown = cur_time_min - farm.time_lastsow
 
-			if time_grown < ewcfg.crops_time_to_grow:
+			if farm.phase != ewcfg.farm_phase_reap:
 				response = "Patience is a virtue and you are morally bankrupt. Just wait, asshole."
 			else: # Reaping
 				if time_grown > ewcfg.crops_time_to_grow * 16:  # about 2 days
@@ -107,14 +163,14 @@ async def reap(cmd):
 				else:
 					user_initial_level = user_data.slimelevel
 
-					slime_gain = ewcfg.reap_gain
+					slime_gain = farm.slimes_onreap
 					response = "You reap what you’ve sown. Your investment has yielded {} slime, ".format(slime_gain)
 
 					# Determine if an item is found.
 					unearthed_item = False
 					unearthed_item_amount = 0
 
-					unearthed_item_chance = 500 / ewcfg.unearthed_item_rarity  # 1 in 3 chance
+					unearthed_item_chance = 50 / ewcfg.unearthed_item_rarity  # 1 in 30 chance
 					
 					if ewcfg.mutation_id_lucky in mutations:
 						unearthed_item_chance *= 1.33
@@ -127,21 +183,17 @@ async def reap(cmd):
 						# If there are multiple possible products, randomly select one.
 						item = random.choice(ewcfg.mine_results)
 
-						if hasattr(item, 'id_item'):
+						item_props = ewitem.gen_item_props(item)
+
+						if item is not None:
+
 							for creation in range(unearthed_item_amount):
 								ewitem.item_create(
-									item_type = ewcfg.it_item,
+									item_type = item.item_type,
 									id_user = cmd.message.author.id,
 									id_server = cmd.message.server.id,
-									item_props = {
-										'id_item': item.id_item,
-										'context': item.context,
-										'item_name': item.str_name,
-										'item_desc': item.str_desc,
-									}
-								),
-						else:
-							pass
+									item_props = item_props
+								)
 
 						if unearthed_item_amount == 1:
 							response += "a {}, ".format(item.str_name)
@@ -149,22 +201,19 @@ async def reap(cmd):
 							response += "two {}s, ".format(item.str_name)
 
 					#  Determine what crop is grown.
-					vegetable = random.choice(ewcfg.vegetable_list)
+					vegetable = ewcfg.food_map.get(farm.crop)
+					if vegetable is None:
+						vegetable = random.choice(ewcfg.vegetable_list)
+
+					item_props = ewitem.gen_item_props(vegetable)
 
 					#  Create and give a bushel of whatever crop was grown.
 					for vcreate in range(3):
 						ewitem.item_create(
 							id_user = cmd.message.author.id,
 							id_server = cmd.message.server.id,
-							item_type = ewcfg.it_food,
-							item_props = {
-								'id_food': vegetable.id_food,
-								'food_name': vegetable.str_name,
-								'food_desc': vegetable.str_desc,
-								'recover_hunger': vegetable.recover_hunger,
-								'str_eat': vegetable.str_eat,
-								'time_expir': time.time() + ewcfg.farm_food_expir
-							}
+							item_type = vegetable.item_type,
+							item_props = item_props
 						)
 
 					response += "and a bushel of {}!".format(vegetable.str_name)
@@ -216,16 +265,53 @@ async def sow(cmd):
 		if farm.time_lastsow > 0:
 			response = "You’ve already sown something here. Try planting in another farming location. If you’ve planted in all three farming locations, you’re shit out of luck. Just wait, asshole."
 		else:
-			poudrin = ewitem.find_item(item_search = "slimepoudrin", id_user = cmd.message.author.id, id_server = cmd.message.server.id if cmd.message.server is not None else None)
+			if cmd.tokens_count > 1:
+				item_search = ewutils.flattenTokenListToString(cmd.tokens[1:])
+			else:
+				item_search = "slimepoudrin"
 
-			if poudrin == None:
+			item_sought = ewitem.find_item(item_search = item_search, id_user = cmd.message.author.id, id_server = cmd.message.server.id if cmd.message.server is not None else None)
+
+			if item_sought == None:
 				response = "You don't have anything to plant! Try collecting a poudrin."
 			else:
+				slimes_onreap = ewcfg.reap_gain
+				item_data = EwItem(id_item = item_sought.get("id_item"))
+				if item_data.item_type == ewcfg.it_item:
+					if item_data.item_props.get("id_item") == ewcfg.item_id_slimepoudrin:
+						vegetable = random.choice(ewcfg.vegetable_list)
+						slimes_onreap *= 2
+					elif item_data.item_props.get("context") == ewcfg.context_slimeoidheart:
+						vegetable = random.choice(ewcfg.vegetable_list)
+						slimes_onreap *= 2
+
+						slimeoid_data = EwSlimeoid(id_slimeoid = item_data.item_props.get("subcontext"))
+						slimeoid_data.delete()
+						
+					else:
+						response = "The soil has enough toxins without you burying your trash here."
+						return await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
+				elif item_data.item_type == ewcfg.it_food:
+					food_id = item_data.item_props.get("id_food")
+					vegetable = ewcfg.food_map.get(food_id)
+					if ewcfg.vendor_farm not in vegetable.vendors:
+						response = "It sure would be nice if {}s grew on trees, but alas they do not. Idiot.".format(item_sought.get("name"))
+						return await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
+
+				else:
+					response = "The soil has enough toxins without you burying your trash here."
+					return await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
+					
 				# Sowing
-				response = "You sow a poudrin into the fertile soil beneath you. It will grow in about 3 hours."
+				response = "You sow a {} into the fertile soil beneath you. It will grow in about 3 hours.".format(item_sought.get("name"))
 
 				farm.time_lastsow = int(time.time() / 60)  # Grow time is stored in minutes.
-				ewitem.item_delete(id_item = poudrin.get('id_item'))  # Remove Poudrins
+				farm.time_lastphase = int(time.time())
+				farm.slimes_onreap = slimes_onreap
+				farm.crop = vegetable.id_food
+				farm.phase = ewcfg.farm_phase_sow
+				farm.action_required = ewcfg.farm_action_none
+				ewitem.item_delete(id_item = item_sought.get('id_item'))  # Remove Poudrins
 
 				farm.persist()
 
@@ -259,49 +345,14 @@ async def mill(cmd):
 		if len(items) > 0:
 			item = random.choice(items)
 
-			if hasattr(item, 'id_item'):
-				ewitem.item_create(
-					item_type = ewcfg.it_item,
-					id_user = cmd.message.author.id,
-					id_server = cmd.message.server.id,
-					item_props = {
-						'id_item': item.id_item,
-						'context': item.context,
-						'item_name': item.str_name,
-						'item_desc': item.str_desc,
-						'ingredients': item.ingredients,
-					}
-				),
-
-			elif hasattr(item, 'id_food'):
-				ewitem.item_create(
-					item_type = ewcfg.it_food,
-					id_user = cmd.message.author.id,
-					id_server = cmd.message.server.id,
-					item_props = {
-						'id_food': item.id_food,
-						'food_name': item.str_name,
-						'food_desc': item.str_desc,
-						'recover_hunger': item.recover_hunger,
-						'inebriation': item.inebriation,
-						'str_eat': item.str_eat,
-						'time_expir': time.time() + ewcfg.farm_food_expir
-					}
-				),
-
-			elif hasattr(item, 'id_cosmetic'):
-				ewitem.item_create(
-					item_type = ewcfg.it_cosmetic,
-					id_user = cmd.message.author.id,
-					id_server = cmd.message.server.id,
-					item_props = {
-						'id_cosmetic': item.id_cosmetic,
-						'cosmetic_name': item.str_name,
-						'cosmetic_desc': item.str_desc,
-						'rarity': item.rarity,
-						'adorned': 'false'
-					}
-				),
+			item_props = ewitem.gen_item_props(item)
+			
+			ewitem.item_create(
+				item_type = item.item_type,
+				id_user = cmd.message.author.id,
+				id_server = cmd.message.server.id,
+				item_props = item_props
+			)
 
 			response = "You walk up to the official SlimeCorp Milling Station and shove your irradiated produce into the hand-crank. You painfully grip the needle-covered crank handle, dripping {} slime into a small compartment on the device’s side which supposedly fuels it. You begin slowly churning them into a glorious, pastry goo. As the goo tosses and turns inside the machine, it solidifies, and after a few moments a {} pops out!".format(ewcfg.slimes_permill, item.str_name)
 
@@ -323,4 +374,126 @@ async def mill(cmd):
 
 	await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
 
+async def check_farm(cmd):
+	user_data = EwUser(member = cmd.message.author)
+	response = ""
+	levelup_response = ""
+	mutations = user_data.get_mutations()
 
+	# Checking availability of check farm action
+	if user_data.life_state != ewcfg.life_state_juvenile:
+		response = "Only Juveniles of pure heart and with nothing better to do can farm."
+	elif user_data.poi not in [ewcfg.poi_id_jr_farms, ewcfg.poi_id_og_farms, ewcfg.poi_id_ab_farms]:
+		response = "Do you remember planting anything here in this barren wasteland? No, you don’t. Idiot."
+	else:
+		if user_data.poi == ewcfg.poi_id_jr_farms:
+			farm_id = ewcfg.poi_id_jr_farms
+		elif user_data.poi == ewcfg.poi_id_og_farms:
+			farm_id = ewcfg.poi_id_og_farms
+		else:  # if it's the farm in arsonbrook
+			farm_id = ewcfg.poi_id_ab_farms
+
+		farm = EwFarm(
+			id_server = cmd.message.server.id,
+			id_user = cmd.message.author.id,
+			farm = farm_id
+		)
+
+		if farm.time_lastsow == 0:
+			response = "You missed a step, you haven’t planted anything here yet."
+		elif farm.action_required == ewcfg.farm_action_none:
+			if farm.phase == ewcfg.farm_phase_reap:
+				response = "Your crop is ready for the harvest."
+			elif farm.phase == ewcfg.farm_phase_sow:
+				response = "You only just planted the seeds. Check back later."
+			else:
+				if farm.slimes_onreap < ewcfg.reap_gain:
+					response = "Your crop looks frail and weak."
+				elif farm.slimes_onreap < ewcfg.reap_gain + 3 * ewcfg.farm_slimes_peraction:
+					response = "Your crop looks small and generally unremarkable."
+				elif farm.slimes_onreap < ewcfg.reap_gain + 6 * ewcfg.farm_slimes_peraction:
+					response = "Your crop seems to be growing well."
+				else:
+					response = "Your crop looks powerful and bursting with nutrients."
+
+		else:
+			farm_action = ewcfg.id_to_farm_action.get(farm.action_required)
+			response = farm_action.str_check
+
+	await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
+
+
+async def cultivate(cmd):
+
+	user_data = EwUser(member = cmd.message.author)
+	response = ""
+	levelup_response = ""
+	mutations = user_data.get_mutations()
+
+	# Checking availability of irrigate action
+	if user_data.life_state != ewcfg.life_state_juvenile:
+		response = "Only Juveniles of pure heart and with nothing better to do can farm."
+	elif user_data.poi not in [ewcfg.poi_id_jr_farms, ewcfg.poi_id_og_farms, ewcfg.poi_id_ab_farms]:
+		response = "Do you remember planting anything here in this barren wasteland? No, you don’t. Idiot."
+	else:
+		if user_data.poi == ewcfg.poi_id_jr_farms:
+			farm_id = ewcfg.poi_id_jr_farms
+		elif user_data.poi == ewcfg.poi_id_og_farms:
+			farm_id = ewcfg.poi_id_og_farms
+		else:  # if it's the farm in arsonbrook
+			farm_id = ewcfg.poi_id_ab_farms
+
+		farm = EwFarm(
+			id_server = cmd.message.server.id,
+			id_user = cmd.message.author.id,
+			farm = farm_id
+		)
+
+		
+		farm_action = ewcfg.cmd_to_farm_action.get(cmd.tokens[0])
+
+		if farm.time_lastsow == 0:
+			response = "You missed a step, you haven’t planted anything here yet."
+		elif farm.action_required != farm_action.id_action:
+			response = farm_action.str_execute_fail
+			farm.slimes_onreap -= ewcfg.farm_slimes_peraction
+			farm.slimes_onreap = max(farm.slimes_onreap, 0)
+			farm.persist()
+		else:
+			response = farm_action.str_execute
+			farm.slimes_onreap += ewcfg.farm_slimes_peraction
+			farm.action_required = ewcfg.farm_action_none
+			farm.persist()
+
+	await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))
+
+async def farm_tick_loop(id_server):
+	while not ewutils.TERMINATE:
+		await asyncio.sleep(ewcfg.farm_tick_length)
+		farm_tick(id_server)
+
+
+def farm_tick(id_server):
+	time_now = int(time.time())
+	farms = ewutils.execute_sql_query("SELECT {id_user}, {farm} FROM farms WHERE id_server = %s AND {time_lastsow} > 0 AND {phase} < %s".format(
+		id_user = ewcfg.col_id_user,
+		farm = ewcfg.col_farm,
+		time_lastsow = ewcfg.col_time_lastsow,
+		phase = ewcfg.col_phase,
+	),(
+		id_server,
+		ewcfg.farm_phase_reap,
+	))
+
+	for row in farms:
+		farm_data = EwFarm(id_server = id_server, id_user = row[0], farm = row[1])
+		
+		if time_now >= farm_data.time_lastphase + ewcfg.time_nextphase:
+			farm_data.phase += 1
+			farm_data.time_lastphase = time_now
+				
+			if farm_data.phase < ewcfg.farm_phase_reap:
+				farm_data.action_required = random.choice(ewcfg.farm_action_ids)
+			else:
+				farm_data.action_required = ewcfg.farm_action_none
+			farm_data.persist()

@@ -1013,7 +1013,8 @@ async def russian_roulette(cmd):
 		return await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(author, response))
 
 	#Players have to be enlisted
-	if challenger.life_state != ewcfg.life_state_enlisted or challengee.life_state != ewcfg.life_state_enlisted:
+	playable_life_states = [ewcfg.life_state_enlisted,ewcfg.life_state_lucky,ewcfg.life_state_executive]
+	if challenger.life_state not in playable_life_states or challengee.life_state not in playable_life_states:
 		if challenger.life_state == ewcfg.life_state_corpse:
 			response = "You try to grab the gun, but it falls through your hands. Ghosts can't hold weapons.".format(author.display_name).replace("@", "\{at\}")
 			return await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(author, response))

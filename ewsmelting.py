@@ -155,61 +155,14 @@ async def smelt(cmd):
 					# If there are multiple possible products, randomly select one.
 					item = random.choice(possible_results)
 
-					if hasattr(item, 'id_item'):
-						ewitem.item_create(
-							item_type = ewcfg.it_item,
-							id_user = cmd.message.author.id,
-							id_server = cmd.message.server.id,
-							item_props = {
-								'id_item': item.id_item,
-								'context': item.context,
-								'item_name': item.str_name,
-								'item_desc': item.str_desc,
-							}
-						),
+					item_props = ewitem.gen_item_props(item)
 
-					elif hasattr(item, 'id_food'):
-						ewitem.item_create(
-							item_type = ewcfg.it_food,
-							id_user = cmd.message.author.id,
-							id_server = cmd.message.server.id,
-							item_props = {
-								'id_food': item.id_food,
-								'food_name': item.str_name,
-								'food_desc': item.str_desc,
-								'recover_hunger': item.recover_hunger,
-								'inebriation': item.inebriation,
-								'str_eat': item.str_eat,
-								'time_expir': time.time() + ewcfg.farm_food_expir
-							}
-						),
-
-					elif hasattr(item, 'id_cosmetic'):
-						ewitem.item_create(
-							item_type = ewcfg.it_cosmetic,
-							id_user = cmd.message.author.id,
-							id_server = cmd.message.server.id,
-							item_props = {
-								'id_cosmetic': item.id_cosmetic,
-								'cosmetic_name': item.str_name,
-								'cosmetic_desc': item.str_desc,
-								'rarity': item.rarity,
-								'adorned': 'false'
-							}
-						),
-
-					elif hasattr(item, 'id_weapon'):
-						ewitem.item_create(
-							item_type = ewcfg.it_weapon,
-							id_user = cmd.message.author.id,
-							id_server = cmd.message.server.id,
-							item_props = {
-								"weapon_type": item.id_weapon,
-								"weapon_name": "",
-								"weapon_desc": item.str_description,
-								"married": ""
-							}
-						),
+					ewitem.item_create(
+						item_type = item.item_type,
+						id_user = cmd.message.author.id,
+						id_server = cmd.message.server.id,
+						item_props = item_props
+					)
 
 				for id_item in owned_ingredients:
 					ewitem.item_delete(id_item = id_item)
@@ -250,17 +203,14 @@ def unwrap(id_user = None, id_server = None, item = None):
 		response += " There’s a single holographic card poking out of the swathes of repeats and late edition cards..."
 		response += " ***...What’s this?! It’s the legendary card {}!! If you’re able to collect the remaining pieces of Slimexodia, you might be able to smelt something incomprehensibly powerful!!***".format(slimexodia_item.str_name)
 
+		item_props = ewitem.gen_item_props(slimexodia_item)
+
 		ewitem.item_create(
-			item_type = ewcfg.it_item,
+			item_type = slimexodia_item.item_type,
 			id_user = id_user.id,
 			id_server = id_server.id,
-			item_props = {
-				'id_item': slimexodia_item.id_item,
-				'context': slimexodia_item.context,
-				'item_name': slimexodia_item.str_name,
-				'item_desc': slimexodia_item.str_desc,
-			}
-		),
+			item_props = item_props
+		)
 
 	else:
 		response += " But… it’s mostly just repeats and late edition cards. You toss them away."

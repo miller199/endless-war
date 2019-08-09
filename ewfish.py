@@ -471,8 +471,8 @@ async def cast(cmd):
 					break
 
 
-			await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, bite_text))
 			fisher.bite = True
+			await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, bite_text))
 
 			await asyncio.sleep(8)
 
@@ -526,17 +526,14 @@ async def reel(cmd):
 
 				unearthed_item_amount = 1 if random.randint(1, 3) != 1 else 2  # 33% chance of extra drop
 
+				item_props = ewitem.gen_item_props(item)
+
 				for creation in range(unearthed_item_amount):
 					ewitem.item_create(
-						item_type = ewcfg.it_item,
+						item_type = item.item_type,
 						id_user = cmd.message.author.id,
 						id_server = cmd.message.server.id,
-						item_props = {
-							'id_item': item.id_item,
-							'context': item.context,
-							'item_name': item.str_name,
-							'item_desc': item.str_desc,
-						}
+						item_props = item_props
 					),
 
 				if unearthed_item_amount == 1:
@@ -686,7 +683,7 @@ async def appraise(cmd):
 		item_props = fish.item_props
 		# str_fish = fish.item_props.get('str_name')
 		# id_fish = item_props['id_food']
-		acquisition = item_props['acquisition']
+		acquisition = item_props.get('acquisition')
 
 		response = "You approach a man of particularly swashbuckling appearance, adorned in an old sea captain's uniform and bicorne cap, and surrounded by empty glass steins. You ask him if he is Captain Albert Alexander and he replies that he hasn’t heard that name in a long time. You submit your {} for appraisal".format(name)
 
@@ -719,7 +716,7 @@ async def appraise(cmd):
 					response += "Shiver me timbers, is that a {}?? Unbelievable, that’s an extremely rare fish!! It was only ever released as a promotional item in Japan during the late ‘90s. ".format(name)
 
 				if size == ewcfg.fish_size_miniscule:
-					response += "Or, is it just a speck of dust? Seriously, that {} is downright miniscule! "
+					response += "Or, is it just a speck of dust? Seriously, that {} is downright miniscule! ".format(name)
 
 				if size == ewcfg.fish_size_small:
 					response += "Hmmm, it’s a little small, don’t you think? "
@@ -791,7 +788,7 @@ async def barter(cmd):
 		id_fish = fish.id_item
 		# str_fish = fish.item_props.get('str_name')
 		item_props = fish.item_props
-		acquisition = item_props['acquisition']
+		acquisition = item_props.get('acquisition')
 		response = "You approach a man of particularly swashbuckling appearance, adorned in an old sea captain's uniform and bicorne cap, and surrounded by empty glass steins. You ask him if he is Captain Albert Alexander and he replies that he hasn’t heard that name in a long time. You submit your {} for bartering".format(name)
 
 		if acquisition != ewcfg.acquisition_fishing:
@@ -951,51 +948,15 @@ async def barter(cmd):
 							response += "\n\n"
 
 					else:
+						item_props = ewitem.gen_item_props(item)	
 
-						if hasattr(item, 'id_item'):
-							ewitem.item_create(
-								item_type = ewcfg.it_item,
-								id_user = cmd.message.author.id,
-								id_server = cmd.message.server.id,
-								item_props = {
-									'id_item': item.id_item,
-									'context': item.context,
-									'item_name': item.str_name,
-									'item_desc': item.str_desc,
-									'ingredients': item.ingredients,
-									'acquisition': item.acquisition,
-								}
-							),
+						ewitem.item_create(
+							item_type = item.item_type,
+							id_user = cmd.message.author.id,
+							id_server = cmd.message.server.id,
+							item_props = item_props
+						)
 
-						if hasattr(item, 'id_food'):
-							ewitem.item_create(
-								item_type = ewcfg.it_food,
-								id_user = cmd.message.author.id,
-								id_server = cmd.message.server.id,
-								item_props = {
-									'id_food': item.id_food,
-									'food_name': item.str_name,
-									'food_desc': item.str_desc,
-									'recover_hunger': item.recover_hunger,
-									'inebriation': item.inebriation,
-									'str_eat': item.str_eat,
-									'time_expir': time.time() + ewcfg.std_food_expir
-								}
-							),
-
-						if hasattr(item, 'id_cosmetic'):
-							ewitem.item_create(
-								item_type = ewcfg.it_cosmetic,
-								id_user = cmd.message.author.id,
-								id_server = cmd.message.server.id,
-								item_props = {
-									'id_cosmetic': item.id_cosmetic,
-									'cosmetic_name': item.str_name,
-									'cosmetic_desc': item.str_desc,
-									'rarity': item.rarity,
-									'adorned': 'false'
-								}
-							),
 
 					ewitem.item_delete(id_item = item_sought.get('id_item'))
 
@@ -1025,3 +986,86 @@ def kill_dead_offers(id_server):
 		id_server,
 		time_now - ewcfg.fish_offer_timeout,
 	))
+
+async def embiggen(cmd):
+	user_data = EwUser(member = cmd.message.author)
+	market_data = EwMarket(id_server = user_data.id_server)
+	item_search = ewutils.flattenTokenListToString(cmd.tokens[1:])
+	item_sought = ewitem.find_item(item_search = item_search, id_user = cmd.message.author.id, id_server = cmd.message.server.id if cmd.message.server is not None else None)
+
+	if cmd.message.channel.name != ewcfg.channel_slimeoidlab:
+		response = "How are you going to embiggen your fish on the side of the street? You’ve got to see a professional for this, man. Head to the SlimeCorp Laboratory, they’ve got dozens of modern day magic potions ‘n shit over there."
+
+	elif item_sought:
+		name = item_sought.get('name')
+		fish = EwItem(id_item = item_sought.get('id_item'))
+		acquisition = fish.item_props.get('acquisition')
+
+		if acquisition != ewcfg.acquisition_fishing:
+			response = "You can only embiggen fishes, dummy. Otherwise everyone would be walking around with colossal nunchucks and huge chicken buckets. Actually, that gives me an idea..."
+
+		else:
+			size = fish.item_props.get('size')
+
+			poudrin_cost = 0
+
+			if size == ewcfg.fish_size_miniscule:
+				poudrin_cost = 2
+
+			if size == ewcfg.fish_size_small:
+				poudrin_cost = 4
+
+			if size == ewcfg.fish_size_average:
+				poudrin_cost = 8
+
+			if size == ewcfg.fish_size_big:
+				poudrin_cost = 16
+
+			if size == ewcfg.fish_size_huge:
+				poudrin_cost = 32
+
+			poudrins_owned = ewitem.find_item_all(item_search = "slimepoudrin", id_user = user_data.id_user, id_server = user_data.id_server)
+			poudrin_amount = len(poudrins_owned)
+
+			if poudrin_cost == 0:
+				response = "Your {} is already as colossal as a fish can get!".format(name)
+
+			elif poudrin_amount < poudrin_cost:
+				response = "You need {} poudrins to embiggen your {}, but you only have {}!!".format(poudrin_cost, name, poudrin_amount)
+
+			else:
+				if size == ewcfg.fish_size_miniscule:
+					fish.item_props['size'] = ewcfg.fish_size_small
+
+				if size == ewcfg.fish_size_small:
+					fish.item_props['size'] = ewcfg.fish_size_average
+
+				if size == ewcfg.fish_size_average:
+					fish.item_props['size'] = ewcfg.fish_size_big
+
+				if size == ewcfg.fish_size_big:
+					fish.item_props['size'] = ewcfg.fish_size_huge
+
+				if size == ewcfg.fish_size_huge:
+					fish.item_props['size'] = ewcfg.fish_size_colossal
+
+				fish.persist()
+
+				for delete in range(poudrin_cost):
+					poudrin = poudrins_owned.pop()
+					ewitem.item_delete(id_item = poudrin.get("id_item"))
+
+				market_data.donated_poudrins += poudrin_cost
+				market_data.persist()
+				user_data.poudrin_donations += poudrin_cost
+				user_data.persist()
+
+				response = "After several minutes long elevator descents, in the depths of some basement level far below the laboratory's lobby, you lay down your {} on a reclined medical chair. A SlimeCorp employee finishes the novel length terms of service they were reciting and asks you if you have any questions. You weren’t listening so you just tell them to get on with it so you can go back to haggling prices with Captain Albert Alexander. They oblige.\nThey grab a butterfly needle and carefully stab your fish with it, injecting filled with some bizarre, multi-colored serum you’ve never seen before. Sick, it’s bigger now!!".format(name)
+
+	else:
+		if item_search:  # If they didn't forget to specify an item and it just wasn't found.
+			response = "You don't have one."
+		else:
+			response = "Embiggen which fish? (check **!inventory**)"
+
+	await ewutils.send_message(cmd.client, cmd.message.channel, ewutils.formatMessage(cmd.message.author, response))

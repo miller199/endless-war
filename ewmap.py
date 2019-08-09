@@ -426,14 +426,23 @@ def score_map_from(
 			step_penult = path.steps[-2] if len(path.steps) >= 2 else None
 
 
-			path_base = EwPath(path_from = path)
-			for neigh in neighbors(step_last):
-				if neigh == step_penult:
-					continue
+			path_base = path
+			neighs = neighbors(step_last)
+			if step_penult in neighs:
+				neighs.remove(step_penult)
 
-				branch = path_branch(path_base, neigh, user_data, coord_end)
-				if branch != None:
-					paths_walking_new.append(branch)
+			num_neighbors = len(neighs)
+			for i in range(num_neighbors):
+
+				neigh = neighs[i]
+				if i < num_neighbors - 1:
+					branch = path_branch(path_base, neigh, user_data, coord_end)
+					if branch != None:
+						paths_walking_new.append(branch)
+
+				else:
+					if path_step(path_base, neigh, user_data, coord_end):
+						paths_walking_new.append(path_base)
 
 
 		paths_walking = paths_walking_new
@@ -447,6 +456,7 @@ def path_to(
 	poi_end = None,
 	user_data = None
 ):
+	#ewutils.logMsg("beginning pathfinding")
 	score_golf = math.inf
 	score_map = []
 	for row in map_world:
@@ -477,7 +487,7 @@ def path_to(
 
 
 	path_id = 0
-	heapq.heappush(paths_walking, (path_base.cost + landmark_heuristic(path_base, coord_end), 0, path_base))
+	heapq.heappush(paths_walking, (path_base.cost + landmark_heuristic(path_base, coord_end) / user_data.move_speed, 0, path_base))
 	path_id += 1
 
 	count_iter = 0
@@ -489,8 +499,12 @@ def path_to(
 		path = path_tuple[-1]
 
 		if path is not None:
-
 			step_last = path.steps[-1]
+			score_current = score_map[step_last[1]][step_last[0]]
+			if path.cost >= score_current:
+				continue
+
+			score_map[step_last[1]][step_last[0]] = path.cost
 			#ewutils.logMsg("visiting " + str(step_last))
 
 			step_penult = path.steps[-2] if len(path.steps) >= 2 else None
@@ -524,16 +538,27 @@ def path_to(
 						pois_adjacent.append(poi_adjacent)
 						continue
 
-			path_base = EwPath(path_from = path)
-			for neigh in neighbors(step_last):
-				if neigh == step_penult:
-					continue
+			path_base = path
+			neighs = neighbors(step_last)
+			if step_penult in neighs:
+				neighs.remove(step_penult)
 
-				branch = path_branch(path_base, neigh, user_data, coord_end)
-				if branch != None:
-					heapq.heappush(paths_walking, (branch.cost + landmark_heuristic(branch, coord_end), path_id, branch))
-					path_id += 1
+			num_neighbors = len(neighs)
+			for i in range(num_neighbors):
+				neigh = neighs[i]
 
+				if i < num_neighbors - 1:
+					branch = path_branch(path_base, neigh, user_data, coord_end)
+					if branch != None:
+						heapq.heappush(paths_walking, (branch.cost + landmark_heuristic(branch, coord_end) / user_data.move_speed, path_id, branch))
+						path_id += 1
+				else:
+					if path_step(path_base, neigh, user_data, coord_end):
+						heapq.heappush(paths_walking, (path_base.cost + landmark_heuristic(path_base, coord_end) / user_data.move_speed, path_id, path_base))
+						path_id += 1
+						
+
+	#ewutils.logMsg("finished pathfinding")
 
 	if coord_end != None:
 		path_true = None
@@ -1083,6 +1108,7 @@ async def scout(cmd):
 					continue
 			if ewcfg.mutation_id_aposematicstench in scoutee_mutations:
 				num_players += math.floor(scoutee_data.slimelevel / 5)
+				continue
 
 			detailed_resp += "\n" + scoutee_player.display_name
 			num_players += 1

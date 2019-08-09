@@ -19,6 +19,9 @@ from ewplayer import EwPlayer
 
 """ A weapon object which adds flavor text to kill/shoot. """
 class EwWeapon:
+
+	item_type = "weapon"
+
 	# A unique name for the weapon. This is used in the database and typed by
 	# users, so it should be one word, all lowercase letters.
 	id_weapon = ""
@@ -91,6 +94,8 @@ class EwWeapon:
 		str_description = "",
 		acquisition = "dojo"
 	):
+		self.item_type = ewcfg.it_weapon
+
 		self.id_weapon = id_weapon
 		self.alias = alias
 		self.str_equip = str_equip
@@ -109,6 +114,8 @@ class EwWeapon:
 		self.str_miss = str_miss
 		self.str_description = str_description
 		self.acquisition = acquisition
+
+		self.str_name = self.str_weapon
 
 
 """ A data-moving class which holds references to objects we want to modify with weapon effects. """
@@ -377,14 +384,31 @@ async def attack(cmd):
 					slimes_damage = 0
 
 				# Remove !revive invulnerability.
+
 				user_data.time_lastrevive = 0
+				if ewcfg.mutation_id_lonewolf in user_mutations:
+					allies_in_district = district_data.get_players_in_district(
+						min_level = math.ceil((1/10) ** 0.25 * user_data.slimelevel),
+						life_states = [ewcfg.life_state_enlisted],
+						factions = [user_data.faction]
+					)
+					if user_data.id_user in allies_in_district:
+						allies_in_district.remove(user_data.id_user)
+
+					if len(allies_in_district) == 0:
+						slimes_damage *= 1.5
 
 				if ewcfg.mutation_id_organicfursuit in user_mutations and (
 					(market_data.day % 31 == 0 and market_data.clock >= 20)
 					or (market_data.day % 31 == 1 and market_data.clock < 6)
 				):
 					slimes_damage *= 2
-				if ewcfg.mutation_id_fatchance in shootee_mutations and shootee_data.hunger / shootee_data.get_hunger_max() > 0.75:
+				if ewcfg.mutation_id_organicfursuit in shootee_mutations and (
+					(market_data.day % 31 == 0 and market_data.clock >= 20)
+					or (market_data.day % 31 == 1 and market_data.clock < 6)
+				):
+					slimes_damage *= 0.1
+				if ewcfg.mutation_id_fatchance in shootee_mutations and shootee_data.hunger / shootee_data.get_hunger_max() > 0.5:
 					slimes_damage *= 0.75
 				if ewcfg.mutation_id_socialanimal in user_mutations:
 					allies_in_district = district_data.get_players_in_district(
@@ -395,7 +419,7 @@ async def attack(cmd):
 					if user_data.id_user in allies_in_district:
 						allies_in_district.remove(user_data.id_user)
 
-					slimes_damage *= 1 + 0.05 * len(allies_in_district)
+					slimes_damage *= 1 + 0.1 * len(allies_in_district)
 				if ewcfg.mutation_id_dressedtokill in user_mutations:
 					items = ewitem.inventory(
 						id_user = cmd.message.author.id,
@@ -410,7 +434,7 @@ async def attack(cmd):
 							adorned_items += 1
 
 					if adorned_items >= ewutils.max_adorn_bylevel(user_data.slimelevel):
-						slimes_damage *= 1.2
+						slimes_damage *= 2
 
 				# Spend slimes, to a minimum of zero
 				user_data.change_slimes(n = (-user_data.slimes if slimes_spent >= user_data.slimes else -slimes_spent), source = ewcfg.source_spending)
@@ -500,7 +524,7 @@ async def attack(cmd):
 					district_data.change_slimes(n = slimes_todistrict, source = ewcfg.source_killing)
 					levelup_response = user_data.change_slimes(n = slimes_tokiller, source = ewcfg.source_killing)
 					if ewcfg.mutation_id_fungalfeaster in user_mutations:
-						user_data.hunger = max(0, user_data.hunger - user_data.get_hunger_max() / 2)
+						user_data.hunger = 0
 
 					# Player was killed.
 					shootee_data.id_killer = user_data.id_user
@@ -651,6 +675,8 @@ async def suicide(cmd):
 		user_isgeneral = user_data.life_state == ewcfg.life_state_kingpin
 		user_isjuvenile = user_data.life_state == ewcfg.life_state_juvenile
 		user_isdead = user_data.life_state == ewcfg.life_state_corpse
+		user_isexecutive = user_data.life_state == ewcfg.life_state_executive
+		user_islucky = user_data.life_state == ewcfg.life_state_lucky
 
 		if user_isdead:
 			response = "Too late for that."
@@ -658,7 +684,7 @@ async def suicide(cmd):
 			response = "Juveniles are too cowardly for suicide."
 		elif user_isgeneral:
 			response = "\*click* Alas, your gun has jammed."
-		elif user_iskillers or user_isrowdys:
+		elif user_iskillers or user_isrowdys or user_isexecutive or user_islucky:
 			#Give slime to challenger if player suicides mid russian roulette
 			if user_data.rr_challenger != "":
 				challenger = EwUser(id_user= user_data.rr_challenger, id_server= user_data.id_server)
@@ -941,12 +967,7 @@ async def arm(cmd):
 				
 			else:
 				response = "You "
-				item_props = {
-					"weapon_type": weapon.id_weapon,
-					"weapon_name": "",
-					"weapon_desc": weapon.str_description,
-					"married": ""
-				}
+				item_props = ewitem.gen_item_props(weapon)
 
 				ewitem.item_create(
 					item_type = ewcfg.it_weapon,

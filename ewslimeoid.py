@@ -2778,8 +2778,8 @@ async def battle_slimeoids(id_s1, id_s2, poi, battle_type):
 
 async def slimeoid_tick_loop(id_server):
 	while not ewutils.TERMINATE:
-		await slimeoid_tick(id_server)
 		await asyncio.sleep(ewcfg.slimeoid_tick_length)
+		await slimeoid_tick(id_server)
 
 async def slimeoid_tick(id_server):
 	data = ewutils.execute_sql_query("SELECT {id_slimeoid} FROM slimeoids WHERE {sltype} = %s AND {id_server} = %s".format(

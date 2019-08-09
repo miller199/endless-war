@@ -12,6 +12,8 @@ from ewitem import EwItem
 	Cosmetic item model object
 """
 class EwCosmeticItem:
+	item_type = "cosmetic"
+
 	# The proper name of the cosmetic item
 	id_cosmetic = ""
 
@@ -45,6 +47,8 @@ class EwCosmeticItem:
 		vendors = [],
 
 	):
+		self.item_type = ewcfg.it_cosmetic
+
 		self.id_cosmetic = id_cosmetic
 		self.str_name = str_name
 		self.str_desc = str_desc

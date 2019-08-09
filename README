@@ -157,6 +157,11 @@ CREATE TABLE farms (
 	id_user varchar(128) NOT NULL,
 	farm varchar(32) NOT NULL,
 	time_lastsow int NOT NULL DEFAULT '0',
+	phase int NOT NULL DEFAULT '0',
+	time_lastphase int NOT NULL DEFAULT '0',
+	slimes_onreap int NOT NULL DEFAULT '0',
+	action_required int NOT NULL DEFAULT '0',
+	crop varchar(32) NOT NULL DEFAULT '',
 
 	PRIMARY KEY (id_server, id_user, farm)
 );
