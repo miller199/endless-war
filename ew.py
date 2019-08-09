@@ -38,6 +38,8 @@ class EwUser:
 	time_last_action = 0
 	weaponmarried = False
 	arrested = False
+	fish_space = 0
+	unclaimed_prizes = 0
 
 	time_lastkill = 0
 	time_lastrevive = 0
@@ -393,6 +395,21 @@ class EwUser:
 
 		return bans
 
+	def get_stored_fish(self):
+		fish = []
+		data = ewutils.execute_sql_query("SELECT {id_item} FROM items WHERE {id_user} = %s AND {id_server} = %s".format(
+			id_item = ewcfg.col_id_item,
+			id_user = ewcfg.col_id_user,
+			id_server = ewcfg.col_id_server
+		), (
+			ewcfg.tank_poi+self.id_user,
+			self.id_server
+		))
+
+		for row in data:
+			fish.append(row[0])
+
+		return fish
 
 	""" Create a new EwUser and optionally retrieve it from the database. """
 	def __init__(self, member = None, id_user = None, id_server = None):
@@ -412,7 +429,7 @@ class EwUser:
 				cursor = conn.cursor();
 
 				# Retrieve object
-				cursor.execute("SELECT {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {} FROM users WHERE id_user = %s AND id_server = %s".format(
+				cursor.execute("SELECT {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {} FROM users WHERE id_user = %s AND id_server = %s".format(
 					ewcfg.col_slimes,
 					ewcfg.col_slimelevel,
 					ewcfg.col_hunger,
@@ -445,6 +462,8 @@ class EwUser:
 					ewcfg.col_slime_donations,
 					ewcfg.col_poudrin_donations,
 					ewcfg.col_arrested,
+					ewcfg.col_fish_space,
+					ewcfg.col_unclaimed_prizes,
 				), (
 					id_user,
 					id_server
@@ -485,6 +504,8 @@ class EwUser:
 					self.slime_donations = result[29]
 					self.poudrin_donations = result[30]
 					self.arrested = (result[31] == 1)
+					self.fish_space = result[32]
+					self.unclaimed_prizes = result[33]
 				else:
 					self.poi = ewcfg.poi_id_downtown
 					self.life_state = ewcfg.life_state_juvenile
@@ -540,7 +561,7 @@ class EwUser:
 			self.limit_fix();
 
 			# Save the object.
-			cursor.execute("REPLACE INTO users({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)".format(
+			cursor.execute("REPLACE INTO users({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)".format(
 				ewcfg.col_id_user,
 				ewcfg.col_id_server,
 				ewcfg.col_slimes,
@@ -576,6 +597,8 @@ class EwUser:
 				ewcfg.col_slime_donations,
 				ewcfg.col_poudrin_donations,
 				ewcfg.col_arrested,
+				ewcfg.col_fish_space,
+				ewcfg.col_unclaimed_prizes
 			), (
 				self.id_user,
 				self.id_server,
@@ -612,6 +635,8 @@ class EwUser:
 				self.slime_donations,
 				self.poudrin_donations,
 				(1 if self.arrested else 0),
+				self.fish_space,
+				self.unclaimed_prizes
 			))
 
 			conn.commit()
