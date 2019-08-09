@@ -44,6 +44,8 @@ import ewquadrants
 import ewtransport
 import ewsmelting
 import ewfish
+import ewdebug
+
 
 from ewitem import EwItem
 from ew import EwUser
@@ -103,7 +105,7 @@ cmd_map = {
 	ewcfg.cmd_mine: ewjuviecmd.mine,
 
 	# flags a vein as dangerous
-	ewcfg.cmd_flag: ewjuviecmd.flag,
+	#ewcfg.cmd_flag: ewjuviecmd.flag,
 
 	# Show the current slime score of a player.
 	ewcfg.cmd_score: ewcmd.score,
@@ -272,6 +274,11 @@ cmd_map = {
 	#farming
 	ewcfg.cmd_sow: ewfarm.sow,
 	ewcfg.cmd_reap: ewfarm.reap,
+	ewcfg.cmd_check_farm: ewfarm.check_farm,
+	ewcfg.cmd_irrigate: ewfarm.cultivate,
+	ewcfg.cmd_weed: ewfarm.cultivate,
+	ewcfg.cmd_fertilize: ewfarm.cultivate,
+	ewcfg.cmd_pesticide: ewfarm.cultivate,
 	ewcfg.cmd_mill: ewfarm.mill,
 
 	# Fishing
@@ -280,6 +287,7 @@ cmd_map = {
 	ewcfg.cmd_appraise: ewfish.appraise,
 	ewcfg.cmd_appraise_alt1: ewfish.appraise,
 	ewcfg.cmd_barter: ewfish.barter,
+	ewcfg.cmd_embiggen: ewfish.embiggen,
 
 	# Bassed Pro Shop
 	ewcfg.cmd_grill: ewfish.grill,
@@ -394,6 +402,10 @@ cmd_map = {
 	ewcfg.cmd_teleport: ewmap.teleport,
 	# restores poi roles to their proper names, only usable by admins
 	ewcfg.cmd_restoreroles: ewrolemgr.restoreRoleNames,
+	
+	# debug commands
+	ewcfg.cmd_debug1: ewdebug.debug1,
+	ewcfg.cmd_debug2: ewdebug.debug2,
 
 	# ban a player from using commands
 	ewcfg.cmd_arrest: ewcmd.arrest,
@@ -407,7 +419,7 @@ while sys.argv:
 	sys.argv = sys.argv[1:]
 
 # When debug is enabled, additional commands are turned on.
-if debug == True:
+if debug == False:
 	ewutils.logMsg('Debug mode enabled.')
 
 @client.event
@@ -553,6 +565,7 @@ async def on_ready():
 		if not debug:
 			await ewtransport.init_transports(id_server = server.id)
 		asyncio.ensure_future(ewslimeoid.slimeoid_tick_loop(id_server = server.id))
+		asyncio.ensure_future(ewfarm.farm_tick_loop(id_server = server.id))
 
 	try:
 		ewutils.logMsg('Creating message queue directory.')
