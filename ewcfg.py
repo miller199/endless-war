@@ -715,6 +715,17 @@ cmd_push_alt_1 = cmd_prefix + 'bully'
 cmd_jump = cmd_prefix + 'jump'
 cmd_toss = cmd_prefix + 'toss'
 
+cmd_beginmanuscript = cmd_prefix + 'beginmanuscript'
+cmd_setpenname = cmd_prefix + 'setpenname'
+cmd_settitle = cmd_prefix + 'settitle'
+cmd_editpage = cmd_prefix + 'editpage'
+cmd_viewpage = cmd_prefix + 'viewpage'
+cmd_checkmanuscript = cmd_prefix + 'checkmanuscript'
+cmd_publishmanuscript = cmd_prefix + 'publishmanuscript'
+cmd_readbook = cmd_prefix + 'readbook'
+cmd_nextpage = cmd_prefix + 'nextpage'
+cmd_previouspage = cmd_prefix + 'previouspage'
+
 apartment_b_multiplier = 1500
 apartment_a_multiplier = 2000000
 apartment_dt_multiplier = 3000000000

@@ -509,6 +509,18 @@ cmd_map = {
 	ewcfg.cmd_piss: ewcmd.piss,
 	ewcfg.cmd_fursuit: ewcmd.fursuit,
 
+	# BOOK COMMANDS OH YEAH
+	ewcfg.cmd_beginmanuscript: ewbook.begin_manuscript,
+	ewcfg.cmd_setpenname: ewbook.set_pen_name,
+	ewcfg.cmd_settitle: ewbook.set_title,
+	ewcfg.cmd_editpage: ewbook.edit_page,
+	ewcfg.cmd_viewpage: ewbook.view_page,
+	ewcfg.cmd_checkmanuscript: ewbook.check_manuscript,
+	ewcfg.cmd_publishmanuscript: ewbook.publish_manuscript,
+	ewcfg.cmd_readbook: ewbook.read_book,
+	ewcfg.cmd_nextpage: ewbook.next_page,
+	ewcfg.cmd_previouspage: ewbook.previous_page,
+
 	# restores poi roles to their proper names, only usable by admins
 	ewcfg.cmd_restoreroles: ewrolemgr.restoreRoleNames,
 
