@@ -52,6 +52,7 @@ import ewworldevent
 import ewdungeons
 import ewads
 import ewdebug
+import ewbook
 
 from ewitem import EwItem
 from ew import EwUser
