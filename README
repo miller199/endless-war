@@ -49,6 +49,8 @@ CREATE TABLE users (
 	time_lastenlist int NOT NULL DEFAULT '0',
 	active_slimeoid int NOT NULL DEFAULT '-1',
 	has_soul int NOT NULL DEFAULT '1',
+	manuscript int NOT NULL DEFAULT '-1',
+
 
 	CONSTRAINT id_user_server PRIMARY KEY (id_user, id_server)
 );
@@ -373,4 +375,27 @@ CREATE TABLE ads (
 	time_expir int NOT NULL DEFAULT '0',
 
 	PRIMARY KEY (id_ad)
+);
+
+CREATE TABLE books (
+    id_book int NOT NULL AUTO_INCREMENT,
+	id_server varchar(128) NOT NULL,
+	id_user varchar(128) NOT NULL,
+	title varchar(32) NOT NULL DEFAULT '',
+	author varchar(32) NOT NULL DEFAULT '',
+	book_state int NOT NULL DEFAULT '0',
+	date_published int NOT NULL DEFAULT '0',
+
+	PRIMARY KEY (id_book)
+);
+
+CREATE TABLE book_pages (
+    id_book int NOT NULL,
+
+	page int NOT NULL,
+	contents varchar(2048),
+
+	FOREIGN KEY (id_book)
+		REFERENCES books(id_book)
+		ON DELETE CASCADE
 );

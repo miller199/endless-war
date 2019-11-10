@@ -1340,6 +1340,7 @@ col_apt_zone = 'apt_zone'
 col_visiting = "visiting"
 col_has_soul = 'has_soul'
 col_tutorial = 'tutorial'
+col_manuscript = "manuscript"
 
 #Database columns for bartering
 col_offer_give = 'offer_give'
@@ -1471,6 +1472,16 @@ col_id_ad = 'id_ad'
 col_id_sponsor = 'id_sponsor'
 col_ad_content = 'content'
 
+# Database columns for books
+col_id_book = "id_book"
+col_title = "title"
+col_author = "author"
+col_book_state = "book_state"
+col_date_published = "date_published"
+
+# Database columns for pages of books
+col_page = "page"
+col_contents = "contents"
 
 # Item type names
 it_item = "item"
